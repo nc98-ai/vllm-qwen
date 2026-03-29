@@ -91,7 +91,9 @@ warmup_backend() {
 
   model_id="$(
     curl -fsS --max-time "${NGINX_BACKEND_WARMUP_TIMEOUT}" "${models_url}" \
-      | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' \
+      | grep -o '"id":"[^"]*"' \
+      | head -n 1 \
+      | cut -d'"' -f4 \
       | head -n 1
   )"
 
