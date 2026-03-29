@@ -2,8 +2,6 @@ name: Deploy (Self-Hosted)
 
 env:
   COMPOSE_FILE_PATH: docker/docker-compose-vllm-nginx.yml
-  COMPOSE_OVERRIDE_PATH: .github/runtime/docker-compose.selfhosted.vllm.override.yml
-  RUNTIME_DIR: .github/runtime
 
 on:
   workflow_dispatch:
@@ -39,6 +37,24 @@ jobs:
     runs-on: self-hosted
     environment: ${{ inputs.target_env || github.ref_name }}
     steps:
+      - name: Resolve persistent deploy directories
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          echo "DEPLOY_CONTENT_DIR=${HOME}/SELFHOSTEDRUNNERS/vllm-qwen-content-deploy" >> "$GITHUB_ENV"
+          echo "RUNTIME_DIR=${HOME}/SELFHOSTEDRUNNERS/vllm-qwen-content-deploy/runtime" >> "$GITHUB_ENV"
+          echo "COMPOSE_OVERRIDE_PATH=${HOME}/SELFHOSTEDRUNNERS/vllm-qwen-content-deploy/docker-compose.selfhosted.vllm.override.yml" >> "$GITHUB_ENV"
+          echo "HF_CACHE_DIR=${HOME}/SELFHOSTEDRUNNERS/vllm-qwen-content-deploy/huggingface-cache" >> "$GITHUB_ENV"
+
+      - name: Log runner user context
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          echo "RUNNER_USER=${USER:-<unset>}"
+          echo "RUNNER_WHOAMI=$(whoami)"
+          echo "RUNNER_UID=$(id -u)"
+          echo "RUNNER_GID=$(id -g)"
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -48,6 +64,21 @@ jobs:
           set -Eeuo pipefail
           echo "VLLM_IMAGE=${{ inputs.vllm_image }}" >> "$GITHUB_ENV"
           echo "NGINX_IMAGE=nginx-vllm-qwen:local" >> "$GITHUB_ENV"
+
+      - name: Prepare persistent deploy content
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          managed_dirs=(
+            "$DEPLOY_CONTENT_DIR"
+            "$RUNTIME_DIR"
+            "$RUNTIME_DIR/secrets"
+            "$HF_CACHE_DIR"
+          )
+
+          mkdir -p "${managed_dirs[@]}"
+          chmod 700 "$DEPLOY_CONTENT_DIR" "$RUNTIME_DIR" "$RUNTIME_DIR/secrets" "$HF_CACHE_DIR"
 
       - name: Prepare secrets files
         env:
@@ -101,6 +132,8 @@ jobs:
             chmod 644 "${secrets_dir}/NGINX_SSL_FULLCHAIN"
           fi
 
+          find "${RUNTIME_DIR}" -type f -exec chmod 600 {} +
+
       - name: Generate compose override for self-hosted runtime
         shell: bash
         run: |
@@ -110,6 +143,8 @@ jobs:
             printf '%s\n' 'services:'
             printf '%s\n' '  vllm:'
             printf '%s\n' "    image: ${VLLM_IMAGE}"
+            printf '%s\n' '    volumes:'
+            printf '%s\n' "      - ${HF_CACHE_DIR}:/root/.cache/huggingface"
             printf '%s\n' '  nginx:'
             printf '%s\n' "    image: ${NGINX_IMAGE}"
             printf '%s\n' 'secrets:'
