@@ -4,8 +4,6 @@ env:
   COMPOSE_FILE_PATH: docker/docker-compose-vllm-nginx.yml
   COMPOSE_OVERRIDE_PATH: .github/runtime/docker-compose.selfhosted.vllm.override.yml
   RUNTIME_DIR: .github/runtime
-  REGISTRY: ghcr.io
-  IMAGE_REPOSITORY: ${{ github.repository }}
 
 on:
   workflow_dispatch:
@@ -18,10 +16,10 @@ on:
         options:
           - ENV_DEV-OPTNC
           - ENV_PRD-OPTNC
-      image_tag:
-        description: "Suffixe de tag publie par la CI (ex: main-sha-abc1234 ou latest)"
+      vllm_image:
+        description: "Image Docker vLLM a deployer"
         required: true
-        default: latest
+        default: vllm/vllm-openai:v0.15.0-cu130
         type: string
       network_name:
         description: Override the Docker network name (optional)
@@ -40,19 +38,7 @@ jobs:
   deploy:
     runs-on: self-hosted
     environment: ${{ inputs.target_env || github.ref_name }}
-    env:
-      GHCR_PAT: ${{ secrets.GHCR_PAT }}
     steps:
-      - name: Resolve image tag
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          if [ -n "${{ inputs.image_tag }}" ]; then
-            echo "IMAGE_TAG=${{ inputs.image_tag }}" >> "$GITHUB_ENV"
-          else
-            echo "IMAGE_TAG=latest" >> "$GITHUB_ENV"
-          fi
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -60,8 +46,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          IMAGE_BASE="${REGISTRY}/${IMAGE_REPOSITORY}"
-          echo "VLLM_IMAGE=${IMAGE_BASE}:vllm-${IMAGE_TAG}" >> "$GITHUB_ENV"
+          echo "VLLM_IMAGE=${{ inputs.vllm_image }}" >> "$GITHUB_ENV"
           echo "NGINX_IMAGE=nginx-vllm-qwen:local" >> "$GITHUB_ENV"
 
       - name: Prepare secrets files
@@ -138,14 +123,6 @@ jobs:
             printf '%s\n' "    file: ${RUNTIME_DIR}/vllm_api_key.txt"
           } > "${COMPOSE_OVERRIDE_PATH}"
 
-      - name: Log in to GitHub Container Registry (optional)
-        if: ${{ env.GHCR_PAT != '' }}
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ env.GHCR_PAT }}
-
       - name: Validate compose definition
         shell: bash
         run: |
@@ -154,12 +131,6 @@ jobs:
             -f "$COMPOSE_FILE_PATH" \
             -f "$COMPOSE_OVERRIDE_PATH" \
             config -q
-
-      - name: Pull published vLLM image
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          docker pull "$VLLM_IMAGE"
 
       - name: Build nginx image locally
         shell: bash
@@ -173,7 +144,6 @@ jobs:
           NETWORK_NAME: ${{ inputs.network_name }}
           NGINX_HTTP_LISTEN_PORT: ${{ inputs.nginx_http_port }}
           NGINX_HTTPS_LISTEN_PORT: ${{ inputs.nginx_https_port }}
-          IMAGE_TAG: ${{ inputs.image_tag || 'latest' }}
         run: |
           set -euo pipefail
           docker compose \
