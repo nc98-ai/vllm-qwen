@@ -17,3 +17,5 @@ cd docker/nginx/
 3. deploiement via GitHub Actions (self-hosted runner)
 - workflow: `.github/workflows/deploy-self-hosted.yml`
 - lancement manuel avec `workflow_dispatch`
+
+A FAIRE
