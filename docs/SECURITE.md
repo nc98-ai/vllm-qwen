@@ -30,6 +30,8 @@ La cle attendue provient du secret `VLLM_API_KEY`, monte dans `nginx` au runtime
 
 Sans cette cle, `nginx` doit repondre `401 Unauthorized`.
 
+Le controle est applique au niveau du reverse proxy avant transmission vers `vllm`.
+
 ### 3. Secrets non commites
 
 Le projet s'appuie sur les secrets GitHub Actions et evite de commiter les secrets runtime.
@@ -61,6 +63,17 @@ Objectif :
 
 - limiter certains abus simples
 - reduire l'impact de rafales de requetes
+
+### 6. Readiness et warmup
+
+Le backend `vllm` doit repondre sur `/v1/models` avant exposition du service.
+
+Ensuite, `nginx` envoie une petite requete de warmup avant son propre demarrage.
+
+Objectif :
+
+- eviter d'exposer un proxy pret alors que le backend n'est pas encore exploitable
+- reduire l'impact de la premiere requete utilisateur
 
 ## Risques residuels
 
@@ -122,6 +135,7 @@ Verifier systematiquement :
 - que `/v1/models` repond uniquement avec une cle API valide
 - que l'appel sans header `Authorization` renvoie `401`
 - que `vllm` et `nginx` sont `healthy` ou `up` selon le comportement attendu
+- que `nginx` n'est pas expose tant que `vllm` n'est pas pret
 
 ### Tests rapides
 

@@ -1,14 +1,14 @@
-# Documentation
+## Documentation
 
 - `docs/FONCTIONNEL.md`
 - `docs/DEVELOPPEMENT.md`
 - `docs/SECURITE.md`
 
-## Procedure rapide
-
 ### Variables GitHub attendues
 
 - `ENV_NAME`
+- `MODEL_NAME`
+- `MAX_MODEL_LEN`
 - `GPU_MEMORY_UTILIZATION`
 - `NGINX_HTTPS_LISTEN_PORT`
 
@@ -19,7 +19,15 @@
 - `NGINX_SSL_CERT` ou `NGINX_SSL_CERT_B64`
 - `NGINX_SSL_FULLCHAIN` ou `NGINX_SSL_FULLCHAIN_B64`
 
-### Deploiement DEV
+### Comportement de demarrage
+
+- `vllm` est considere pret quand `GET /v1/models` repond
+- `nginx` attend cette readiness avant de demarrer
+- `nginx` envoie ensuite une petite requete de warmup au backend avant de s'ouvrir
+- l'acces externe est uniquement en HTTPS
+- toutes les requetes API doivent fournir `Authorization: Bearer $VLLM_API_KEY`
+
+### Deploiement DEV sur un hote
 
 ```bash
 curl -s -o /dev/null -w "dispatch HTTP %{http_code}\n" -X POST \
@@ -52,7 +60,3 @@ curl -k https://127.0.0.1:443/v1/completions \
     "max_tokens": 80
   }'
 ```
-
-# Autres Documents
-- `docs/DEVELOPPEMENT.md`
-- `docs/SECURITE.md`

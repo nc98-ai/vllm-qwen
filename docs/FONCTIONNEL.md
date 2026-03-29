@@ -33,6 +33,7 @@ Fonctions principales :
 - protection par cle API `Bearer`
 - proxy des requetes vers `vllm`
 - attente active de la disponibilite du backend avant demarrage
+- envoi d'une requete de warmup au backend avant exposition du service
 
 ### 3. GitHub Actions
 
@@ -55,7 +56,8 @@ Fonctions principales :
 3. Les secrets et variables d'environnement sont resolves.
 4. `vllm` est demarre avec le modele configure.
 5. `nginx` attend que `vllm` soit joignable sur `/v1/models`.
-6. L'API est accessible via HTTPS.
+6. `nginx` envoie une requete de warmup au backend `vllm`.
+7. L'API est accessible via HTTPS.
 
 ### Appel API
 
@@ -69,6 +71,8 @@ Fonctions principales :
 Chaque environnement GitHub doit definir :
 
 - `ENV_NAME`
+- `MODEL_NAME`
+- `MAX_MODEL_LEN`
 - `GPU_MEMORY_UTILIZATION`
 - `NGINX_HTTPS_LISTEN_PORT`
 
@@ -90,6 +94,15 @@ Ce repertoire contient :
 - le cache Hugging Face
 - les secrets runtime generes pour le deploiement
 - le fichier d'override `docker-compose`
+
+## Comportement de readiness
+
+La disponibilite du service suit la logique suivante :
+
+- `vllm` doit repondre sur `GET /v1/models`
+- `nginx` ne demarre pas tant que ce signal n'est pas present
+- apres ce signal, `nginx` effectue une petite requete de warmup pour precharger le backend
+- seulement ensuite, `nginx` devient joignable depuis l'exterieur
 
 ## Verifications fonctionnelles
 

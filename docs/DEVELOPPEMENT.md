@@ -36,19 +36,24 @@ Le workflow self-hosted fait les operations suivantes :
 
 1. resolution du nom d'environnement de deploiement
 2. validation de `ENV_NAME`
-3. validation de `GPU_MEMORY_UTILIZATION`
-4. creation des repertoires persistants de runtime
-5. preparation des secrets
-6. generation d'un fichier d'override `docker-compose`
-7. build local de l'image `nginx`
-8. suppression ciblee des conteneurs du stack courant
-9. redeploiement avec `docker compose`
+3. validation de `MODEL_NAME`
+4. validation de `MAX_MODEL_LEN`
+5. validation de `GPU_MEMORY_UTILIZATION`
+6. validation de `NGINX_HTTPS_LISTEN_PORT`
+7. creation des repertoires persistants de runtime
+8. preparation des secrets
+9. generation d'un fichier d'override `docker-compose`
+10. build local de l'image `nginx`
+11. suppression ciblee des conteneurs du stack courant
+12. redeploiement avec `docker compose`
 
 ## Variables GitHub attendues
 
 ### Variables d'environnement GitHub
 
 - `ENV_NAME`
+- `MODEL_NAME`
+- `MAX_MODEL_LEN`
 - `GPU_MEMORY_UTILIZATION`
 - `NGINX_HTTPS_LISTEN_PORT`
 
@@ -69,8 +74,21 @@ Exemple :
 
 ```yaml
 command:
-  - "Qwen/Qwen3.5-2B"
+  - "${MODEL_NAME}"
 ```
+
+La valeur reelle est injectee depuis la variable GitHub `MODEL_NAME`.
+
+### Longueur maximale du contexte
+
+Le parametre :
+
+```yaml
+- "--max-model-len"
+- "${MAX_MODEL_LEN}"
+```
+
+est injecte depuis la variable GitHub `MAX_MODEL_LEN`.
 
 ### VRAM
 
@@ -100,12 +118,21 @@ Cela permet :
 
 - `vllm` est considere pret quand `/v1/models` repond
 - `nginx` attend explicitement ce signal avant de demarrer
+- `nginx` envoie ensuite une petite requete de warmup vers `/v1/completions`
 
 ### 2. Secrets
 
 Le secret `VLLM_API_KEY` est reutilise par `nginx` pour proteger l'acces externe.
 
-### 3. Compatibilite WSL
+### 3. HTTPS only
+
+Le stack n'expose plus de port HTTP.
+
+Le port public a publier est porte uniquement par :
+
+- `NGINX_HTTPS_LISTEN_PORT`
+
+### 4. Compatibilite WSL
 
 Les logs indiquent que le runtime tourne sous WSL.
 
@@ -158,6 +185,12 @@ curl -s -o /dev/null -w "dispatch HTTP %{http_code}\n" -X POST \
 
 ```bash
 docker inspect --format '{{json .State.Health}}' vllm_qwen-dev
+```
+
+### Verifier le conteneur nginx
+
+```bash
+docker ps --filter name=nginx-vllm-qwen
 ```
 
 ## Evolutions recommandees

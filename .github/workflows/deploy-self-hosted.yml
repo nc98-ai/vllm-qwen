@@ -30,6 +30,8 @@ jobs:
         env:
           TARGET_ENV: ${{ inputs.target_env || github.ref_name }}
           ENV_NAME_VAR: ${{ vars.ENV_NAME }}
+          MODEL_NAME_VAR: ${{ vars.MODEL_NAME }}
+          MAX_MODEL_LEN_VAR: ${{ vars.MAX_MODEL_LEN }}
           GPU_MEMORY_UTILIZATION_VAR: ${{ vars.GPU_MEMORY_UTILIZATION }}
           NGINX_HTTPS_LISTEN_PORT_VAR: ${{ vars.NGINX_HTTPS_LISTEN_PORT }}
           REPO_NAME: ${{ github.event.repository.name }}
@@ -52,6 +54,16 @@ jobs:
             exit 1
           fi
 
+          if [ -z "$(printf '%s' "${MODEL_NAME_VAR:-}" | tr -d '[:space:]')" ]; then
+            echo "Missing required environment variable: MODEL_NAME. Define vars.MODEL_NAME in the selected GitHub environment (${TARGET_ENV})." >&2
+            exit 1
+          fi
+
+          if [ -z "$(printf '%s' "${MAX_MODEL_LEN_VAR:-}" | tr -d '[:space:]')" ]; then
+            echo "Missing required environment variable: MAX_MODEL_LEN. Define vars.MAX_MODEL_LEN in the selected GitHub environment (${TARGET_ENV})." >&2
+            exit 1
+          fi
+
           if [ -z "$(printf '%s' "${NGINX_HTTPS_LISTEN_PORT_VAR:-}" | tr -d '[:space:]')" ]; then
             echo "Missing required environment variable: NGINX_HTTPS_LISTEN_PORT. Define vars.NGINX_HTTPS_LISTEN_PORT in the selected GitHub environment (${TARGET_ENV})." >&2
             exit 1
@@ -59,6 +71,8 @@ jobs:
 
           echo "DEPLOY_ENV_NAME=${deploy_env_name}" >> "$GITHUB_ENV"
           echo "DEPLOY_STACK_DIR=${REPO_NAME}-${deploy_env_name}" >> "$GITHUB_ENV"
+          echo "MODEL_NAME=${MODEL_NAME_VAR}" >> "$GITHUB_ENV"
+          echo "MAX_MODEL_LEN=${MAX_MODEL_LEN_VAR}" >> "$GITHUB_ENV"
           echo "GPU_MEMORY_UTILIZATION=${GPU_MEMORY_UTILIZATION_VAR}" >> "$GITHUB_ENV"
           echo "NGINX_HTTPS_LISTEN_PORT=${NGINX_HTTPS_LISTEN_PORT_VAR}" >> "$GITHUB_ENV"
 
@@ -217,6 +231,8 @@ jobs:
       - name: Deploy with Docker Compose
         env:
           ENV_NAME: ${{ env.DEPLOY_ENV_NAME }}
+          MODEL_NAME: ${{ env.MODEL_NAME }}
+          MAX_MODEL_LEN: ${{ env.MAX_MODEL_LEN }}
           GPU_MEMORY_UTILIZATION: ${{ env.GPU_MEMORY_UTILIZATION }}
           NGINX_HTTPS_LISTEN_PORT: ${{ env.NGINX_HTTPS_LISTEN_PORT }}
           NETWORK_NAME: ${{ inputs.network_name }}
