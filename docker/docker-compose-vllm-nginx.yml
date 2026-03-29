@@ -28,7 +28,7 @@ services:
 
   vllm:
     # Utilisation de l'image pré-construite que vous avez choisie
-    image: vllm/vllm-openai:v0.15.0-cu130
+    image: vllm/vllm-openai:v0.18.0-cu130
     container_name: vllm_qwen-${ENV_NAME:-dev}
     networks:
       - app-network
