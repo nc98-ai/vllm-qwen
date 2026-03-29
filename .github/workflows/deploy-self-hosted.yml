@@ -138,6 +138,24 @@ jobs:
           set -Eeuo pipefail
           docker build -f docker/nginx/Dockerfile -t "$NGINX_IMAGE" .
 
+      - name: Remove only current deployment containers
+        env:
+          ENV_NAME: ${{ inputs.target_env || github.ref_name }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          containers=(
+            "nginx-vllm-qwen-${ENV_NAME}"
+            "vllm_qwen-${ENV_NAME}"
+          )
+
+          for container in "${containers[@]}"; do
+            if docker container inspect "$container" >/dev/null 2>&1; then
+              docker rm -f "$container"
+            fi
+          done
+
       - name: Deploy with Docker Compose
         env:
           ENV_NAME: ${{ inputs.target_env || github.ref_name }}
@@ -149,4 +167,4 @@ jobs:
           docker compose \
             -f "$COMPOSE_FILE_PATH" \
             -f "$COMPOSE_OVERRIDE_PATH" \
-            up -d --no-build --force-recreate --remove-orphans
+            up -d --no-build --force-recreate
