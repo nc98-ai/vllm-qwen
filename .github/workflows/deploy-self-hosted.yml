@@ -235,7 +235,7 @@ jobs:
           MAX_MODEL_LEN: ${{ env.MAX_MODEL_LEN }}
           GPU_MEMORY_UTILIZATION: ${{ env.GPU_MEMORY_UTILIZATION }}
           NGINX_HTTPS_LISTEN_PORT: ${{ env.NGINX_HTTPS_LISTEN_PORT }}
-          NETWORK_NAME: ${{ inputs.network_name }}
+          NETWORK_NAME: vllm-qwen-network-${{ env.DEPLOY_ENV_NAME }}
         run: |
           set -euo pipefail
           docker compose \
