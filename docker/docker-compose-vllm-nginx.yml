@@ -8,7 +8,8 @@ services:
     container_name: nginx-vllm-qwen-${ENV_NAME:-dev}
     restart: unless-stopped
     depends_on:
-      - vllm
+      vllm:
+        condition: service_healthy
     networks:
       - app-network
     ports:
@@ -23,12 +24,13 @@ services:
       - NGINX_SSL_CERT
       - NGINX_SSL_KEY
       - NGINX_SSL_FULLCHAIN
+      - vllm_api_key
     cpus: 1.0
     mem_limit: 512m
 
   vllm:
     # Utilisation de l'image pré-construite que vous avez choisie
-    image: vllm/vllm-openai:v0.15.0-cu130
+    image: vllm/vllm-openai:v0.18.0-cu130
     container_name: vllm_qwen-${ENV_NAME:-dev}
     networks:
       - app-network
@@ -39,17 +41,38 @@ services:
 
     # Commande pour démarrer le serveur vLLM
     command:
-      - "Qwen/Qwen3.5-4B"
-      - "--runner"                  # Mode de fonctionnement si modele de génération d'embedding utilisé pour des requêtes
-      - "pooling"
+      # - "Qwen/Qwen3-4B-FP8"
+
+      # - "Qwen/Qwen2.5-3B-Instruct-AWQ"
+
+      # - "Qwen/Qwen3.5-4B"
+      # - "--language-model-only"     
+      
+      - "Qwen/Qwen3.5-2B"
+      - "--language-model-only"       
+      
       - "--gpu-memory-utilization"
-      - "0.80"
-      - "--max-model-len"           # utile si probleme de memoire manquante par exemple a cause de la taille de KV Cache
-      - "8192"
+      - "${GPU_MEMORY_UTILIZATION}"
+      - "--max-model-len"
+      - "2048"
+      - "--kv-cache-dtype"
+      - "fp8"      
+      # - "--quantization"
+      # - "fp8"
 
     # Mappage du port pour l'accès à l'API
     expose:
       - "8000"
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          curl -fsS http://127.0.0.1:8000/v1/models >/dev/null
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 10m
       
     # Volume pour la persistance du cache Hugging Face
     volumes:

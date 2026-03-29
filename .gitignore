@@ -6,3 +6,4 @@
 *.key
 secrets/
 docker/vllm_api_key.txt
+actions-runner/*

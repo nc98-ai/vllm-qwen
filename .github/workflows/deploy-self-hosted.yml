@@ -2,10 +2,6 @@ name: Deploy (Self-Hosted)
 
 env:
   COMPOSE_FILE_PATH: docker/docker-compose-vllm-nginx.yml
-  COMPOSE_OVERRIDE_PATH: .github/runtime/docker-compose.selfhosted.vllm.override.yml
-  RUNTIME_DIR: .github/runtime
-  REGISTRY: ghcr.io
-  IMAGE_REPOSITORY: ${{ github.repository }}
 
 on:
   workflow_dispatch:
@@ -17,14 +13,8 @@ on:
         type: choice
         options:
           - ENV_DEV-OPTNC
-          - ENV_INT-OPTNC
-          - ENV_QUL-OPTNC
+          - ENV_QUL-OPTNC          
           - ENV_PRD-OPTNC
-      image_tag:
-        description: "Suffixe de tag publie par la CI (ex: main-sha-abc1234 ou latest)"
-        required: true
-        default: latest
-        type: string
       network_name:
         description: Override the Docker network name (optional)
         required: false
@@ -43,15 +33,53 @@ jobs:
     runs-on: self-hosted
     environment: ${{ inputs.target_env || github.ref_name }}
     steps:
-      - name: Resolve image tag
+      - name: Resolve deployment names
+        shell: bash
+        env:
+          TARGET_ENV: ${{ inputs.target_env || github.ref_name }}
+          ENV_NAME_VAR: ${{ vars.ENV_NAME }}
+          GPU_MEMORY_UTILIZATION_VAR: ${{ vars.GPU_MEMORY_UTILIZATION }}
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          set -Eeuo pipefail
+
+          if [ -n "${ENV_NAME_VAR:-}" ]; then
+            deploy_env_name="${ENV_NAME_VAR}"
+          else
+            deploy_env_name="${TARGET_ENV}"
+          fi
+
+          if [ -z "$(printf '%s' "${deploy_env_name}" | tr -d '[:space:]')" ]; then
+            echo "Missing required environment variable: ENV_NAME. Define vars.ENV_NAME in the selected GitHub environment (${TARGET_ENV})." >&2
+            exit 1
+          fi
+
+          if [ -z "$(printf '%s' "${GPU_MEMORY_UTILIZATION_VAR:-}" | tr -d '[:space:]')" ]; then
+            echo "Missing required environment variable: GPU_MEMORY_UTILIZATION. Define vars.GPU_MEMORY_UTILIZATION in the selected GitHub environment (${TARGET_ENV})." >&2
+            exit 1
+          fi
+
+          echo "DEPLOY_ENV_NAME=${deploy_env_name}" >> "$GITHUB_ENV"
+          echo "DEPLOY_STACK_DIR=${REPO_NAME}-${deploy_env_name}" >> "$GITHUB_ENV"
+          echo "GPU_MEMORY_UTILIZATION=${GPU_MEMORY_UTILIZATION_VAR}" >> "$GITHUB_ENV"
+
+      - name: Resolve persistent deploy directories
         shell: bash
         run: |
           set -Eeuo pipefail
-          if [ -n "${{ inputs.image_tag }}" ]; then
-            echo "IMAGE_TAG=${{ inputs.image_tag }}" >> "$GITHUB_ENV"
-          else
-            echo "IMAGE_TAG=latest" >> "$GITHUB_ENV"
-          fi
+          echo "DEPLOY_CONTENT_DIR=${HOME}/SELFHOSTEDRUNNERS/${DEPLOY_STACK_DIR}" >> "$GITHUB_ENV"
+          echo "RUNTIME_DIR=${HOME}/SELFHOSTEDRUNNERS/${DEPLOY_STACK_DIR}/runtime" >> "$GITHUB_ENV"
+          echo "COMPOSE_OVERRIDE_PATH=${HOME}/SELFHOSTEDRUNNERS/${DEPLOY_STACK_DIR}/docker-compose.selfhosted.vllm.override.yml" >> "$GITHUB_ENV"
+          echo "HF_CACHE_DIR=${HOME}/SELFHOSTEDRUNNERS/${DEPLOY_STACK_DIR}/huggingface-cache" >> "$GITHUB_ENV"
+
+      - name: Log runner user context
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          echo "RUNNER_USER=${USER:-<unset>}"
+          echo "RUNNER_WHOAMI=$(whoami)"
+          echo "RUNNER_UID=$(id -u)"
+          echo "RUNNER_GID=$(id -g)"
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -60,9 +88,22 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          IMAGE_BASE="${REGISTRY}/${IMAGE_REPOSITORY}"
-          echo "VLLM_IMAGE=${IMAGE_BASE}:vllm-${IMAGE_TAG}" >> "$GITHUB_ENV"
           echo "NGINX_IMAGE=nginx-vllm-qwen:local" >> "$GITHUB_ENV"
+
+      - name: Prepare persistent deploy content
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          managed_dirs=(
+            "$DEPLOY_CONTENT_DIR"
+            "$RUNTIME_DIR"
+            "$RUNTIME_DIR/secrets"
+            "$HF_CACHE_DIR"
+          )
+
+          mkdir -p "${managed_dirs[@]}"
+          chmod 700 "$DEPLOY_CONTENT_DIR" "$RUNTIME_DIR" "$RUNTIME_DIR/secrets" "$HF_CACHE_DIR"
 
       - name: Prepare secrets files
         env:
@@ -116,6 +157,8 @@ jobs:
             chmod 644 "${secrets_dir}/NGINX_SSL_FULLCHAIN"
           fi
 
+          find "${RUNTIME_DIR}" -type f -exec chmod 600 {} +
+
       - name: Generate compose override for self-hosted runtime
         shell: bash
         run: |
@@ -124,7 +167,8 @@ jobs:
           {
             printf '%s\n' 'services:'
             printf '%s\n' '  vllm:'
-            printf '%s\n' "    image: ${VLLM_IMAGE}"
+            printf '%s\n' '    volumes:'
+            printf '%s\n' "      - ${HF_CACHE_DIR}:/root/.cache/huggingface"
             printf '%s\n' '  nginx:'
             printf '%s\n' "    image: ${NGINX_IMAGE}"
             printf '%s\n' 'secrets:'
@@ -138,14 +182,6 @@ jobs:
             printf '%s\n' "    file: ${RUNTIME_DIR}/vllm_api_key.txt"
           } > "${COMPOSE_OVERRIDE_PATH}"
 
-      - name: Log in to GitHub Container Registry (optional)
-        if: ${{ secrets.GHCR_PAT != '' }}
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_PAT }}
-
       - name: Validate compose definition
         shell: bash
         run: |
@@ -155,28 +191,40 @@ jobs:
             -f "$COMPOSE_OVERRIDE_PATH" \
             config -q
 
-      - name: Pull published vLLM image
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          docker pull "$VLLM_IMAGE"
-
       - name: Build nginx image locally
         shell: bash
         run: |
           set -Eeuo pipefail
           docker build -f docker/nginx/Dockerfile -t "$NGINX_IMAGE" .
 
+      - name: Remove only current deployment containers
+        env:
+          ENV_NAME: ${{ env.DEPLOY_ENV_NAME }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          containers=(
+            "nginx-vllm-qwen-${ENV_NAME}"
+            "vllm_qwen-${ENV_NAME}"
+          )
+
+          for container in "${containers[@]}"; do
+            if docker container inspect "$container" >/dev/null 2>&1; then
+              docker rm -f "$container"
+            fi
+          done
+
       - name: Deploy with Docker Compose
         env:
-          ENV_NAME: ${{ inputs.target_env || github.ref_name }}
+          ENV_NAME: ${{ env.DEPLOY_ENV_NAME }}
+          GPU_MEMORY_UTILIZATION: ${{ env.GPU_MEMORY_UTILIZATION }}
           NETWORK_NAME: ${{ inputs.network_name }}
           NGINX_HTTP_LISTEN_PORT: ${{ inputs.nginx_http_port }}
           NGINX_HTTPS_LISTEN_PORT: ${{ inputs.nginx_https_port }}
-          IMAGE_TAG: ${{ inputs.image_tag || 'latest' }}
         run: |
           set -euo pipefail
           docker compose \
             -f "$COMPOSE_FILE_PATH" \
             -f "$COMPOSE_OVERRIDE_PATH" \
-            up -d --no-build --force-recreate --remove-orphans
+            up -d --no-build --force-recreate

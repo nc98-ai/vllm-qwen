@@ -11,6 +11,11 @@ http {
     include       /etc/nginx/mime.types;
     default_type  application/octet-stream;
 
+    map $http_authorization $api_key_valid {
+        default 0;
+        "Bearer ${NGINX_API_KEY}" 1;
+    }
+
     # Reduit les informations exposees par Nginx.
     server_tokens off;
     # Leger tampon au-dessus des 50 MB applicatifs pour les envois multipart.
@@ -74,6 +79,11 @@ http {
         add_header Content-Security-Policy "default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'none'; font-src 'self'; object-src 'none'; manifest-src 'none'; worker-src 'none'; upgrade-insecure-requests" always;
 
         location / {
+            if ($api_key_valid = 0) {
+                add_header WWW-Authenticate 'Bearer realm="vllm"' always;
+                return 401 '{"error":"Unauthorized"}';
+            }
+
             # Laisse passer de petits pics sans ouvrir la porte aux floods.
             limit_req zone=api_limit burst=20 nodelay;
 
@@ -103,6 +113,12 @@ http {
             proxy_buffer_size 16k;
             proxy_buffers 8 16k;
             proxy_busy_buffers_size 32k;
+        }
+
+        error_page 401 /401.json;
+        location = /401.json {
+            default_type application/json;
+            return 401 '{"error":"Unauthorized"}';
         }
 
         error_page 413 /413.json;
