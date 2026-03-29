@@ -29,9 +29,30 @@ curl -s -o /dev/null -w "dispatch HTTP %{http_code}\n" -X POST \
   -d '{"ref":"env-developpement","inputs":{"target_env":"ENV_DEV-OPTNC"}}'
 ```
 
-### Test API
+
+## Verifications fonctionnelles
+
+### Verifier les modeles exposes
 
 ```bash
 curl -k https://127.0.0.1:443/v1/models \
   -H "Authorization: Bearer $VLLM_API_KEY"
 ```
+
+### Verifier une completion
+
+```bash
+curl -k https://127.0.0.1:443/v1/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $VLLM_API_KEY" \
+  -d '{
+    "model": "Qwen/Qwen3.5-2B",
+    "prompt": "Qui est Napoleon ?",
+    "temperature": 0.2,
+    "max_tokens": 80
+  }'
+```
+
+# Autres Documents
+- `docs/DEVELOPPEMENT.md`
+- `docs/SECURITE.md`
