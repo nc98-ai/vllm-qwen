@@ -1,0 +1,182 @@
+name: Deploy (Self-Hosted)
+
+env:
+  COMPOSE_FILE_PATH: docker/docker-compose-vllm-nginx.yml
+  COMPOSE_OVERRIDE_PATH: .github/runtime/docker-compose.selfhosted.vllm.override.yml
+  RUNTIME_DIR: .github/runtime
+  REGISTRY: ghcr.io
+  IMAGE_REPOSITORY: ${{ github.repository }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_env:
+        description: "Environnement GitHub contenant les secrets de deploiement"
+        required: true
+        default: ENV_DEV-OPTNC
+        type: choice
+        options:
+          - ENV_DEV-OPTNC
+          - ENV_INT-OPTNC
+          - ENV_QUL-OPTNC
+          - ENV_PRD-OPTNC
+      image_tag:
+        description: "Suffixe de tag publie par la CI (ex: main-sha-abc1234 ou latest)"
+        required: true
+        default: latest
+        type: string
+      network_name:
+        description: Override the Docker network name (optional)
+        required: false
+        default: ""
+      nginx_http_port:
+        description: HTTP listen port for nginx
+        required: false
+        default: "80"
+      nginx_https_port:
+        description: HTTPS listen port for nginx
+        required: false
+        default: "443"
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    environment: ${{ inputs.target_env || github.ref_name }}
+    steps:
+      - name: Resolve image tag
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if [ -n "${{ inputs.image_tag }}" ]; then
+            echo "IMAGE_TAG=${{ inputs.image_tag }}" >> "$GITHUB_ENV"
+          else
+            echo "IMAGE_TAG=latest" >> "$GITHUB_ENV"
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve image references
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          IMAGE_BASE="${REGISTRY}/${IMAGE_REPOSITORY}"
+          echo "VLLM_IMAGE=${IMAGE_BASE}:vllm-${IMAGE_TAG}" >> "$GITHUB_ENV"
+          echo "NGINX_IMAGE=nginx-vllm-qwen:local" >> "$GITHUB_ENV"
+
+      - name: Prepare secrets files
+        env:
+          NGINX_SSL_CERT: ${{ secrets.NGINX_SSL_CERT }}
+          NGINX_SSL_CERT_B64: ${{ secrets.NGINX_SSL_CERT_B64 }}
+          NGINX_SSL_KEY: ${{ secrets.NGINX_SSL_KEY }}
+          NGINX_SSL_KEY_B64: ${{ secrets.NGINX_SSL_KEY_B64 }}
+          NGINX_SSL_FULLCHAIN: ${{ secrets.NGINX_SSL_FULLCHAIN }}
+          NGINX_SSL_FULLCHAIN_B64: ${{ secrets.NGINX_SSL_FULLCHAIN_B64 }}
+          VLLM_API_KEY: ${{ secrets.VLLM_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          secrets_dir="${RUNTIME_DIR}/secrets"
+          mkdir -p "${secrets_dir}" "${RUNTIME_DIR}"
+          umask 077
+
+          if [ -z "${VLLM_API_KEY:-}" ]; then
+            echo "Missing required secret: VLLM_API_KEY" >&2
+            exit 1
+          fi
+
+          if [ -n "${VLLM_API_KEY:-}" ]; then
+            printf '%s' "${VLLM_API_KEY}" > "${RUNTIME_DIR}/vllm_api_key.txt"
+          fi
+
+          if [ -n "${NGINX_SSL_KEY_B64:-}" ]; then
+            printf '%s' "${NGINX_SSL_KEY_B64}" | base64 -d > "${secrets_dir}/NGINX_SSL_KEY"
+          elif [ -n "${NGINX_SSL_KEY:-}" ]; then
+            printf '%s' "${NGINX_SSL_KEY}" > "${secrets_dir}/NGINX_SSL_KEY"
+          fi
+          if [ -f "${secrets_dir}/NGINX_SSL_KEY" ]; then
+            chmod 600 "${secrets_dir}/NGINX_SSL_KEY"
+          fi
+
+          if [ -n "${NGINX_SSL_CERT_B64:-}" ]; then
+            printf '%s' "${NGINX_SSL_CERT_B64}" | base64 -d > "${secrets_dir}/NGINX_SSL_CERT"
+          elif [ -n "${NGINX_SSL_CERT:-}" ]; then
+            printf '%s' "${NGINX_SSL_CERT}" > "${secrets_dir}/NGINX_SSL_CERT"
+          fi
+          if [ -f "${secrets_dir}/NGINX_SSL_CERT" ]; then
+            chmod 644 "${secrets_dir}/NGINX_SSL_CERT"
+          fi
+
+          if [ -n "${NGINX_SSL_FULLCHAIN_B64:-}" ]; then
+            printf '%s' "${NGINX_SSL_FULLCHAIN_B64}" | base64 -d > "${secrets_dir}/NGINX_SSL_FULLCHAIN"
+          elif [ -n "${NGINX_SSL_FULLCHAIN:-}" ]; then
+            printf '%s' "${NGINX_SSL_FULLCHAIN}" > "${secrets_dir}/NGINX_SSL_FULLCHAIN"
+          fi
+          if [ -f "${secrets_dir}/NGINX_SSL_FULLCHAIN" ]; then
+            chmod 644 "${secrets_dir}/NGINX_SSL_FULLCHAIN"
+          fi
+
+      - name: Generate compose override for self-hosted runtime
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "${RUNTIME_DIR}"
+          {
+            printf '%s\n' 'services:'
+            printf '%s\n' '  vllm:'
+            printf '%s\n' "    image: ${VLLM_IMAGE}"
+            printf '%s\n' '  nginx:'
+            printf '%s\n' "    image: ${NGINX_IMAGE}"
+            printf '%s\n' 'secrets:'
+            printf '%s\n' '  NGINX_SSL_CERT:'
+            printf '%s\n' "    file: ${RUNTIME_DIR}/secrets/NGINX_SSL_CERT"
+            printf '%s\n' '  NGINX_SSL_KEY:'
+            printf '%s\n' "    file: ${RUNTIME_DIR}/secrets/NGINX_SSL_KEY"
+            printf '%s\n' '  NGINX_SSL_FULLCHAIN:'
+            printf '%s\n' "    file: ${RUNTIME_DIR}/secrets/NGINX_SSL_FULLCHAIN"
+            printf '%s\n' '  vllm_api_key:'
+            printf '%s\n' "    file: ${RUNTIME_DIR}/vllm_api_key.txt"
+          } > "${COMPOSE_OVERRIDE_PATH}"
+
+      - name: Log in to GitHub Container Registry (optional)
+        if: ${{ secrets.GHCR_PAT != '' }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PAT }}
+
+      - name: Validate compose definition
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          docker compose \
+            -f "$COMPOSE_FILE_PATH" \
+            -f "$COMPOSE_OVERRIDE_PATH" \
+            config -q
+
+      - name: Pull published vLLM image
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          docker pull "$VLLM_IMAGE"
+
+      - name: Build nginx image locally
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          docker build -f docker/nginx/Dockerfile -t "$NGINX_IMAGE" .
+
+      - name: Deploy with Docker Compose
+        env:
+          ENV_NAME: ${{ inputs.target_env || github.ref_name }}
+          NETWORK_NAME: ${{ inputs.network_name }}
+          NGINX_HTTP_LISTEN_PORT: ${{ inputs.nginx_http_port }}
+          NGINX_HTTPS_LISTEN_PORT: ${{ inputs.nginx_https_port }}
+          IMAGE_TAG: ${{ inputs.image_tag || 'latest' }}
+        run: |
+          set -euo pipefail
+          docker compose \
+            -f "$COMPOSE_FILE_PATH" \
+            -f "$COMPOSE_OVERRIDE_PATH" \
+            up -d --no-build --force-recreate --remove-orphans

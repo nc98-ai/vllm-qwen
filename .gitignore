@@ -1,0 +1,8 @@
+*.pyc
+*.pkl
+*.log
+*.db
+*opt.sh
+*.key
+secrets/
+docker/vllm_api_key.txt

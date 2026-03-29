@@ -1,0 +1,79 @@
+services:
+
+  nginx:
+    build:
+      context: ../
+      dockerfile: docker/nginx/Dockerfile
+    image: nginx:latest
+    container_name: nginx-vllm-qwen-${ENV_NAME:-dev}
+    restart: unless-stopped
+    depends_on:
+      - vllm
+    networks:
+      - app-network
+    ports:
+      - "${NGINX_HTTP_LISTEN_PORT:-80}:${NGINX_HTTP_LISTEN_PORT:-80}"
+      - "${NGINX_HTTPS_LISTEN_PORT:-443}:${NGINX_HTTPS_LISTEN_PORT:-44444}"
+    environment:
+      TZ: Pacific/Noumea
+      NGINX_BACKEND_UPSTREAM: ${NGINX_BACKEND_UPSTREAM:-vllm:8000}
+      NGINX_HTTP_LISTEN_PORT: ${NGINX_HTTP_LISTEN_PORT:-80}
+      NGINX_HTTPS_LISTEN_PORT: ${NGINX_HTTPS_LISTEN_PORT:-443}
+    secrets:
+      - NGINX_SSL_CERT
+      - NGINX_SSL_KEY
+      - NGINX_SSL_FULLCHAIN
+    cpus: 1.0
+    mem_limit: 512m
+
+  vllm:
+    # Utilisation de l'image pré-construite que vous avez choisie
+    image: vllm/vllm-openai:v0.15.0-cu130
+    container_name: vllm_qwen-${ENV_NAME:-dev}
+    networks:
+      - app-network
+    secrets:
+      - vllm_api_key
+    environment:
+      - VLLM_API_KEY_FILE=/run/secrets/vllm_api_key
+
+    # Commande pour démarrer le serveur vLLM
+    command:
+      - "Qwen/Qwen3.5-4B"
+      - "--runner"                  # Mode de fonctionnement si modele de génération d'embedding utilisé pour des requêtes
+      - "pooling"
+      - "--gpu-memory-utilization"
+      - "0.80"
+      - "--max-model-len"           # utile si probleme de memoire manquante par exemple a cause de la taille de KV Cache
+      - "8192"
+
+    # Mappage du port pour l'accès à l'API
+    expose:
+      - "8000"
+      
+    # Volume pour la persistance du cache Hugging Face
+    volumes:
+      - ./huggingface-cache:/root/.cache/huggingface
+      
+    # Configuration pour l'accès aux GPUs NVIDIA
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+secrets:
+  NGINX_SSL_CERT:
+    file: ../secrets/NGINX_SSL_CERT
+  NGINX_SSL_KEY:
+    file: ../secrets/NGINX_SSL_KEY
+  NGINX_SSL_FULLCHAIN:
+    file: ../secrets/NGINX_SSL_FULLCHAIN
+  vllm_api_key:
+    file: ./vllm_api_key.txt    
+
+networks:
+  app-network:
+    name: ${NETWORK_NAME:-vllm-qwen-network-${ENV_NAME:-dev}}
