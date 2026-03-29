@@ -44,8 +44,11 @@ services:
 
       # - "Qwen/Qwen2.5-3B-Instruct-AWQ"
 
-      - "Qwen/Qwen3.5-4B"
-      - "--language-model-only"      
+      # - "Qwen/Qwen3.5-4B"
+      # - "--language-model-only"     
+      
+      - "Qwen/Qwen3.5-2B"
+      - "--language-model-only"       
       
       - "--gpu-memory-utilization"
       - "${GPU_MEMORY_UTILIZATION}"
