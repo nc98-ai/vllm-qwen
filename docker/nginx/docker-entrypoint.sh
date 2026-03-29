@@ -6,6 +6,7 @@ set -eu
 : "${NGINX_HTTPS_LISTEN_PORT:=443}"
 : "${NGINX_BACKEND_READY_TIMEOUT:=900}"
 : "${NGINX_BACKEND_READY_INTERVAL:=5}"
+export NGINX_API_KEY="${NGINX_API_KEY:-}"
 
 write_secret_file() {
   src_file="$1"
@@ -38,7 +39,17 @@ if ! write_secret_file "/run/secrets/NGINX_SSL_FULLCHAIN" "${NGINX_SSL_FULLCHAIN
   fi
 fi
 
-envsubst '${NGINX_BACKEND_UPSTREAM} ${NGINX_HTTP_LISTEN_PORT} ${NGINX_HTTPS_LISTEN_PORT}' \
+if [ -z "${NGINX_API_KEY}" ] && [ -f /run/secrets/vllm_api_key ]; then
+  NGINX_API_KEY="$(cat /run/secrets/vllm_api_key)"
+  export NGINX_API_KEY
+fi
+
+if [ -z "${NGINX_API_KEY}" ]; then
+  echo "Missing required API key for nginx auth (/run/secrets/vllm_api_key or NGINX_API_KEY)." >&2
+  exit 1
+fi
+
+envsubst '${NGINX_BACKEND_UPSTREAM} ${NGINX_HTTP_LISTEN_PORT} ${NGINX_HTTPS_LISTEN_PORT} ${NGINX_API_KEY}' \
   < /etc/nginx/templates/nginx.conf.template \
   > /etc/nginx/nginx.conf
 

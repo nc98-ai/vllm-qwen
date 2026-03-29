@@ -24,6 +24,7 @@ services:
       - NGINX_SSL_CERT
       - NGINX_SSL_KEY
       - NGINX_SSL_FULLCHAIN
+      - vllm_api_key
     cpus: 1.0
     mem_limit: 512m
 

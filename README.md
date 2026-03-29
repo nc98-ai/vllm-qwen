@@ -19,3 +19,16 @@ cd docker/nginx/
 - lancement manuel avec `workflow_dispatch`
 
 A FAIRE
+
+
+4. Test 
+- de base via nginx
+curl -k https://127.0.0.1:443/v1/models
+
+- Q/A via nginx
+curl -k https://127.0.0.1:443/v1/completions   -H "Content-Type: application/json"   -d '{
+    "model": "Qwen/Qwen3.5-2B",
+    "prompt": "Qui est napoleon?",
+    "temperature": 0.2,
+    "max_tokens": 80
+  }'
