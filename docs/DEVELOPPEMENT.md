@@ -142,6 +142,14 @@ Impact attendu :
 - `pin_memory=False`
 - performances potentiellement inferieures a un Linux natif
 
+### 5. Limites CPU et memoire avec Podman rootless
+
+En mode rootless, Podman ne peut pas toujours acceder aux controleurs cgroup `cpu` et `memory`.
+Si le host ne delegue pas ces controleurs au `user.slice`, les options `cpus` et `mem_limit`
+provoquent un echec au demarrage des conteneurs.
+
+Dans ce cas, laisser ces lignes commentees dans `docker/docker-compose-vllm-nginx.yml`.
+
 
 
 ## Deploiement

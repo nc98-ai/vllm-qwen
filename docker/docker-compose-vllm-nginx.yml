@@ -27,8 +27,8 @@ services:
       - NGINX_SSL_KEY
       - NGINX_SSL_FULLCHAIN
       - vllm_api_key
-    cpus: 1.0
-    mem_limit: 512m
+    # cpus: 1.0 # uniquement si le host delegue le controleur cpu au user slice
+    # mem_limit: 512m # uniquement si le host delegue le controleur memory au user slice
 
   vllm:
     # Utilisation de l'image pré-construite que vous avez choisie
