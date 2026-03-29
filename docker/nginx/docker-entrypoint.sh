@@ -2,7 +2,6 @@
 set -eu
 
 : "${NGINX_BACKEND_UPSTREAM:=vllm:8080}"
-: "${NGINX_HTTP_LISTEN_PORT:=80}"
 : "${NGINX_HTTPS_LISTEN_PORT:=443}"
 : "${NGINX_BACKEND_READY_TIMEOUT:=900}"
 : "${NGINX_BACKEND_READY_INTERVAL:=5}"
@@ -49,7 +48,7 @@ if [ -z "${NGINX_API_KEY}" ]; then
   exit 1
 fi
 
-envsubst '${NGINX_BACKEND_UPSTREAM} ${NGINX_HTTP_LISTEN_PORT} ${NGINX_HTTPS_LISTEN_PORT} ${NGINX_API_KEY}' \
+envsubst '${NGINX_BACKEND_UPSTREAM} ${NGINX_HTTPS_LISTEN_PORT} ${NGINX_API_KEY}' \
   < /etc/nginx/templates/nginx.conf.template \
   > /etc/nginx/nginx.conf
 

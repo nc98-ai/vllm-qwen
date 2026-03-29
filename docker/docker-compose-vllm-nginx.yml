@@ -13,12 +13,10 @@ services:
     networks:
       - app-network
     ports:
-      - "${NGINX_HTTP_LISTEN_PORT:-80}:${NGINX_HTTP_LISTEN_PORT:-80}"
       - "${NGINX_HTTPS_LISTEN_PORT:-443}:${NGINX_HTTPS_LISTEN_PORT:-44444}"
     environment:
       TZ: Pacific/Noumea
       NGINX_BACKEND_UPSTREAM: ${NGINX_BACKEND_UPSTREAM:-vllm:8000}
-      NGINX_HTTP_LISTEN_PORT: ${NGINX_HTTP_LISTEN_PORT:-80}
       NGINX_HTTPS_LISTEN_PORT: ${NGINX_HTTPS_LISTEN_PORT:-443}
     secrets:
       - NGINX_SSL_CERT
