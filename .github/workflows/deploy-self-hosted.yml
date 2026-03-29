@@ -33,7 +33,7 @@ jobs:
           MODEL_NAME_VAR: ${{ vars.MODEL_NAME }}
           MAX_MODEL_LEN_VAR: ${{ vars.MAX_MODEL_LEN }}
           GPU_MEMORY_UTILIZATION_VAR: ${{ vars.GPU_MEMORY_UTILIZATION }}
-          NGINX_HTTPS_LISTEN_PORT_VAR: ${{ vars.NGINX_HTTPS_LISTEN_PORT }}
+          NGINX_HTTPS_HOST_PORT_VAR: ${{ vars.NGINX_HTTPS_HOST_PORT }}
           REPO_NAME: ${{ github.event.repository.name }}
         run: |
           set -Eeuo pipefail
@@ -64,8 +64,8 @@ jobs:
             exit 1
           fi
 
-          if [ -z "$(printf '%s' "${NGINX_HTTPS_LISTEN_PORT_VAR:-}" | tr -d '[:space:]')" ]; then
-            echo "Missing required environment variable: NGINX_HTTPS_LISTEN_PORT. Define vars.NGINX_HTTPS_LISTEN_PORT in the selected GitHub environment (${TARGET_ENV})." >&2
+          if [ -z "$(printf '%s' "${NGINX_HTTPS_HOST_PORT_VAR:-}" | tr -d '[:space:]')" ]; then
+            echo "Missing required environment variable: NGINX_HTTPS_HOST_PORT. Define vars.NGINX_HTTPS_HOST_PORT in the selected GitHub environment (${TARGET_ENV})." >&2
             exit 1
           fi
 
@@ -74,7 +74,7 @@ jobs:
           echo "MODEL_NAME=${MODEL_NAME_VAR}" >> "$GITHUB_ENV"
           echo "MAX_MODEL_LEN=${MAX_MODEL_LEN_VAR}" >> "$GITHUB_ENV"
           echo "GPU_MEMORY_UTILIZATION=${GPU_MEMORY_UTILIZATION_VAR}" >> "$GITHUB_ENV"
-          echo "NGINX_HTTPS_LISTEN_PORT=${NGINX_HTTPS_LISTEN_PORT_VAR}" >> "$GITHUB_ENV"
+          echo "NGINX_HTTPS_HOST_PORT=${NGINX_HTTPS_HOST_PORT_VAR}" >> "$GITHUB_ENV"
 
       - name: Resolve persistent deploy directories
         shell: bash
@@ -234,7 +234,7 @@ jobs:
           MODEL_NAME: ${{ env.MODEL_NAME }}
           MAX_MODEL_LEN: ${{ env.MAX_MODEL_LEN }}
           GPU_MEMORY_UTILIZATION: ${{ env.GPU_MEMORY_UTILIZATION }}
-          NGINX_HTTPS_LISTEN_PORT: ${{ env.NGINX_HTTPS_LISTEN_PORT }}
+          NGINX_HTTPS_HOST_PORT: ${{ env.NGINX_HTTPS_HOST_PORT }}
           NETWORK_NAME: vllm-qwen-network-${{ env.DEPLOY_ENV_NAME }}
         run: |
           set -euo pipefail

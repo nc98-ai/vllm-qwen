@@ -39,7 +39,7 @@ Le workflow self-hosted fait les operations suivantes :
 3. validation de `MODEL_NAME`
 4. validation de `MAX_MODEL_LEN`
 5. validation de `GPU_MEMORY_UTILIZATION`
-6. validation de `NGINX_HTTPS_LISTEN_PORT`
+6. validation de `NGINX_HTTPS_HOST_PORT`
 7. creation des repertoires persistants de runtime
 8. preparation des secrets
 9. generation d'un fichier d'override `docker-compose`
@@ -55,7 +55,7 @@ Le workflow self-hosted fait les operations suivantes :
 - `MODEL_NAME`
 - `MAX_MODEL_LEN`
 - `GPU_MEMORY_UTILIZATION`
-- `NGINX_HTTPS_LISTEN_PORT`
+- `NGINX_HTTPS_HOST_PORT`
 
 ### Secrets GitHub
 
@@ -130,7 +130,9 @@ Le stack n'expose plus de port HTTP.
 
 Le port public a publier est porte uniquement par :
 
-- `NGINX_HTTPS_LISTEN_PORT`
+- `NGINX_HTTPS_HOST_PORT`
+
+Le conteneur `nginx` ecoute en interne sur le port `443`, et le port host est mappe via `NGINX_HTTPS_HOST_PORT`.
 
 ### 4. Compatibilite WSL
 
