@@ -2,10 +2,13 @@
 set -eu
 
 : "${NGINX_BACKEND_UPSTREAM:=vllm:8080}"
-: "${NGINX_HTTP_LISTEN_PORT:=80}"
 : "${NGINX_HTTPS_LISTEN_PORT:=443}"
 : "${NGINX_BACKEND_READY_TIMEOUT:=900}"
 : "${NGINX_BACKEND_READY_INTERVAL:=5}"
+: "${NGINX_BACKEND_WARMUP_ENABLED:=true}"
+: "${NGINX_BACKEND_WARMUP_PROMPT:=warmup}"
+: "${NGINX_BACKEND_WARMUP_MAX_TOKENS:=1}"
+: "${NGINX_BACKEND_WARMUP_TIMEOUT:=120}"
 export NGINX_API_KEY="${NGINX_API_KEY:-}"
 
 write_secret_file() {
@@ -49,7 +52,7 @@ if [ -z "${NGINX_API_KEY}" ]; then
   exit 1
 fi
 
-envsubst '${NGINX_BACKEND_UPSTREAM} ${NGINX_HTTP_LISTEN_PORT} ${NGINX_HTTPS_LISTEN_PORT} ${NGINX_API_KEY}' \
+envsubst '${NGINX_BACKEND_UPSTREAM} ${NGINX_HTTPS_LISTEN_PORT} ${NGINX_API_KEY}' \
   < /etc/nginx/templates/nginx.conf.template \
   > /etc/nginx/nginx.conf
 
@@ -77,5 +80,38 @@ wait_for_backend() {
 }
 
 wait_for_backend
+
+warmup_backend() {
+  if [ "${NGINX_BACKEND_WARMUP_ENABLED}" != "true" ]; then
+    return 0
+  fi
+
+  models_url="http://${NGINX_BACKEND_UPSTREAM}/v1/models"
+  completions_url="http://${NGINX_BACKEND_UPSTREAM}/v1/completions"
+
+  model_id="$(
+    curl -fsS --max-time "${NGINX_BACKEND_WARMUP_TIMEOUT}" "${models_url}" \
+      | grep -o '"id":"[^"]*"' \
+      | head -n 1 \
+      | cut -d'"' -f4 \
+      | head -n 1
+  )"
+
+  if [ -z "${model_id}" ]; then
+    echo "Unable to resolve model id from ${models_url}" >&2
+    return 1
+  fi
+
+  warmup_payload=$(printf '{"model":"%s","prompt":"%s","max_tokens":%s,"temperature":0}' \
+    "${model_id}" "${NGINX_BACKEND_WARMUP_PROMPT}" "${NGINX_BACKEND_WARMUP_MAX_TOKENS}")
+
+  echo "Sending warmup request to backend model ${model_id}"
+  curl -fsS --max-time "${NGINX_BACKEND_WARMUP_TIMEOUT}" \
+    -H "Content-Type: application/json" \
+    -d "${warmup_payload}" \
+    "${completions_url}" >/dev/null
+}
+
+warmup_backend
 
 exec nginx -g 'daemon off;'

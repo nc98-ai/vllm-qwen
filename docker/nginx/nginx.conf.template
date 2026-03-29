@@ -43,12 +43,6 @@ http {
     }
 
     server {
-        listen ${NGINX_HTTP_LISTEN_PORT};
-        server_name localhost;
-        return 301 https://$host$request_uri;
-    }
-
-    server {
         listen ${NGINX_HTTPS_LISTEN_PORT} ssl;
         http2 on;
         server_name localhost;
