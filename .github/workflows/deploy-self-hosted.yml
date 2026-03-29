@@ -13,12 +13,8 @@ on:
         type: choice
         options:
           - ENV_DEV-OPTNC
+          - ENV_QUL-OPTNC          
           - ENV_PRD-OPTNC
-      vllm_image:
-        description: "Image Docker vLLM a deployer"
-        required: true
-        default: vllm/vllm-openai:v0.15.0-cu130
-        type: string
       network_name:
         description: Override the Docker network name (optional)
         required: false
@@ -42,6 +38,7 @@ jobs:
         env:
           TARGET_ENV: ${{ inputs.target_env || github.ref_name }}
           ENV_NAME_VAR: ${{ vars.ENV_NAME }}
+          GPU_MEMORY_UTILIZATION_VAR: ${{ vars.GPU_MEMORY_UTILIZATION }}
           REPO_NAME: ${{ github.event.repository.name }}
         run: |
           set -Eeuo pipefail
@@ -57,8 +54,14 @@ jobs:
             exit 1
           fi
 
+          if [ -z "$(printf '%s' "${GPU_MEMORY_UTILIZATION_VAR:-}" | tr -d '[:space:]')" ]; then
+            echo "Missing required environment variable: GPU_MEMORY_UTILIZATION. Define vars.GPU_MEMORY_UTILIZATION in the selected GitHub environment (${TARGET_ENV})." >&2
+            exit 1
+          fi
+
           echo "DEPLOY_ENV_NAME=${deploy_env_name}" >> "$GITHUB_ENV"
           echo "DEPLOY_STACK_DIR=${REPO_NAME}-${deploy_env_name}" >> "$GITHUB_ENV"
+          echo "GPU_MEMORY_UTILIZATION=${GPU_MEMORY_UTILIZATION_VAR}" >> "$GITHUB_ENV"
 
       - name: Resolve persistent deploy directories
         shell: bash
@@ -85,7 +88,6 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          echo "VLLM_IMAGE=${{ inputs.vllm_image }}" >> "$GITHUB_ENV"
           echo "NGINX_IMAGE=nginx-vllm-qwen:local" >> "$GITHUB_ENV"
 
       - name: Prepare persistent deploy content
@@ -165,7 +167,6 @@ jobs:
           {
             printf '%s\n' 'services:'
             printf '%s\n' '  vllm:'
-            printf '%s\n' "    image: ${VLLM_IMAGE}"
             printf '%s\n' '    volumes:'
             printf '%s\n' "      - ${HF_CACHE_DIR}:/root/.cache/huggingface"
             printf '%s\n' '  nginx:'
@@ -217,6 +218,7 @@ jobs:
       - name: Deploy with Docker Compose
         env:
           ENV_NAME: ${{ env.DEPLOY_ENV_NAME }}
+          GPU_MEMORY_UTILIZATION: ${{ env.GPU_MEMORY_UTILIZATION }}
           NETWORK_NAME: ${{ inputs.network_name }}
           NGINX_HTTP_LISTEN_PORT: ${{ inputs.nginx_http_port }}
           NGINX_HTTPS_LISTEN_PORT: ${{ inputs.nginx_https_port }}

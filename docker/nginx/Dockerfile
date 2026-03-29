@@ -1,6 +1,6 @@
 FROM nginx:1.28-alpine
 
-RUN apk add --no-cache gettext \
+RUN apk add --no-cache curl gettext \
  && mkdir -p /etc/nginx/certs /etc/nginx/templates /var/log/nginx \
  && ln -sf /dev/stdout /var/log/nginx/access.log \
  && ln -sf /dev/stderr /var/log/nginx/error.log
