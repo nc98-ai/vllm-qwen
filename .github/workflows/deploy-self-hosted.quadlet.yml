@@ -13,9 +13,10 @@ on:
       target_env:
         description: "Environnement GitHub contenant les secrets de deploiement"
         required: true
-        default: ENV_QUL-OPTNC
+        default: ENV_DEV-OPTNC
         type: choice
         options:
+          - ENV_DEV-OPTNC
           - ENV_QUL-OPTNC          
           - ENV_PRD-OPTNC
       network_name:
@@ -85,7 +86,6 @@ jobs:
           echo "GPU_MEMORY_UTILIZATION=${GPU_MEMORY_UTILIZATION_VAR}" >> "$GITHUB_ENV"
           echo "NGINX_HTTPS_HOST_PORT=${NGINX_HTTPS_HOST_PORT_VAR}" >> "$GITHUB_ENV"
 
-
       - name: Resolve persistent deploy directories
         shell: bash
         run: |
@@ -148,34 +148,37 @@ jobs:
             exit 1
           fi
 
-          if[ -n "${VLLM_API_KEY:-}" ]; then
+          if [ -n "${VLLM_API_KEY:-}" ]; then
             printf '%s' "${VLLM_API_KEY}" > "${RUNTIME_DIR}/vllm_api_key.txt"
           fi
 
           if [ -n "${NGINX_SSL_KEY_B64:-}" ]; then
             printf '%s' "${NGINX_SSL_KEY_B64}" | base64 -d > "${secrets_dir}/NGINX_SSL_KEY"
-          elif[ -n "${NGINX_SSL_KEY:-}" ]; then
+          elif [ -n "${NGINX_SSL_KEY:-}" ]; then
             printf '%s' "${NGINX_SSL_KEY}" > "${secrets_dir}/NGINX_SSL_KEY"
           fi
-          if[ -f "${secrets_dir}/NGINX_SSL_KEY" ]; then
+          
+          if [ -f "${secrets_dir}/NGINX_SSL_KEY" ]; then
             chmod 600 "${secrets_dir}/NGINX_SSL_KEY"
           fi
 
-          if[ -n "${NGINX_SSL_CERT_B64:-}" ]; then
+          if [ -n "${NGINX_SSL_CERT_B64:-}" ]; then
             printf '%s' "${NGINX_SSL_CERT_B64}" | base64 -d > "${secrets_dir}/NGINX_SSL_CERT"
           elif [ -n "${NGINX_SSL_CERT:-}" ]; then
             printf '%s' "${NGINX_SSL_CERT}" > "${secrets_dir}/NGINX_SSL_CERT"
           fi
+          
           if [ -f "${secrets_dir}/NGINX_SSL_CERT" ]; then
             chmod 644 "${secrets_dir}/NGINX_SSL_CERT"
           fi
 
-          if[ -n "${NGINX_SSL_FULLCHAIN_B64:-}" ]; then
+          if [ -n "${NGINX_SSL_FULLCHAIN_B64:-}" ]; then
             printf '%s' "${NGINX_SSL_FULLCHAIN_B64}" | base64 -d > "${secrets_dir}/NGINX_SSL_FULLCHAIN"
-          elif[ -n "${NGINX_SSL_FULLCHAIN:-}" ]; then
+          elif [ -n "${NGINX_SSL_FULLCHAIN:-}" ]; then
             printf '%s' "${NGINX_SSL_FULLCHAIN}" > "${secrets_dir}/NGINX_SSL_FULLCHAIN"
           fi
-          if[ -f "${secrets_dir}/NGINX_SSL_FULLCHAIN" ]; then
+          
+          if [ -f "${secrets_dir}/NGINX_SSL_FULLCHAIN" ]; then
             chmod 644 "${secrets_dir}/NGINX_SSL_FULLCHAIN"
           fi
 
@@ -201,23 +204,18 @@ jobs:
         run: |
           set -euo pipefail
           
-          # 1. On crée le répertoire de destination natif de Systemd pour Podman
           QUADLET_DIR="$HOME/.config/containers/systemd"
           mkdir -p "$QUADLET_DIR"
           
-          # 2. On injecte les variables dans les templates et on crée les fichiers finaux
           envsubst < docker/quadlets/vllm-qwen.network.template > "$QUADLET_DIR/vllm-qwen.network"
           envsubst < docker/quadlets/vllm-qwen.container.template > "$QUADLET_DIR/vllm-qwen.container"
           envsubst < docker/quadlets/nginx-vllm.container.template > "$QUADLET_DIR/nginx-vllm.container"
           
-          # 3. On demande à Systemd de générer et recharger les unités
           systemctl --user daemon-reload
           
-          # 4. On active les services au boot et on force le redémarrage (ce qui recrée les conteneurs proprement)
           systemctl --user enable --now vllm-qwen.service
           systemctl --user enable --now nginx-vllm.service
           
-          # On redémarre pour appliquer la nouvelle image Nginx construite juste avant
           systemctl --user restart vllm-qwen.service nginx-vllm.service
 
       - name: Post-deploy port diagnostics
@@ -236,9 +234,7 @@ jobs:
           podman port "${nginx_container}" || true
           ss -tnlp || true
 
-          # Nginx and vLLM can take a short time to become ready right after start.
           ok=0
-          # vLLM cold start + torch.compile can take several minutes on first boot.
           for _ in $(seq 1 300); do
             if curl -fsS --http1.1 -k "https://127.0.0.1:${NGINX_HTTPS_HOST_PORT}/v1/models" \
               -H "Authorization: Bearer ${VLLM_API_KEY}" >/dev/null; then
@@ -250,8 +246,6 @@ jobs:
 
           if [ "${ok}" -ne 1 ]; then
             echo "Post-deploy check failed after retries. Dumping container logs..." >&2
-            
-            # Affichage des logs via journalctl car les conteneurs sont maintenant gérés par Systemd
             echo "--- LOGS VLLM ---"
             journalctl --user -u vllm-qwen.service --no-pager --tail 150 || true
             echo "--- LOGS NGINX ---"
