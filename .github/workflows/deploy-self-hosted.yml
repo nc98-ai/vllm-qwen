@@ -266,7 +266,8 @@ jobs:
 
           # Nginx and vLLM can take a short time to become ready right after compose up.
           ok=0
-          for _ in $(seq 1 30); do
+          # vLLM cold start + torch.compile can take several minutes on first boot.
+          for _ in $(seq 1 300); do
             if curl -fsS --http1.1 -k "https://127.0.0.1:${NGINX_HTTPS_HOST_PORT}/v1/models" \
               -H "Authorization: Bearer ${VLLM_API_KEY}" >/dev/null; then
               ok=1
