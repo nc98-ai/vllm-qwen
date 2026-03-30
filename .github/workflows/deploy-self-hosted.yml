@@ -31,10 +31,10 @@ jobs:
       #     echo "XDG_RUNTIME_DIR=/run/user/$(id -u)" >> "$GITHUB_ENV"
 
       - name: Force XDG_RUNTIME_DIR
-              shell: bash
-              run: |
-                echo "XDG_RUNTIME_DIR=/run/user/$(id -u)" >> "$GITHUB_ENV"
-                echo "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus" >> "$GITHUB_ENV"
+        shell: bash
+        run: |
+          echo "XDG_RUNTIME_DIR=/run/user/$(id -u)" >> "$GITHUB_ENV"
+          echo "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus" >> "$GITHUB_ENV"
 
       - name: Resolve deployment names
         shell: bash
@@ -254,19 +254,19 @@ jobs:
       #       -f "$COMPOSE_OVERRIDE_PATH" \
       #       up -d --no-build --force-recreate
       - name: Deploy with Docker Compose
-              env:
-                ENV_NAME: ${{ env.DEPLOY_ENV_NAME }}
-                MODEL_NAME: ${{ env.MODEL_NAME }}
-                MAX_MODEL_LEN: ${{ env.MAX_MODEL_LEN }}
-                GPU_MEMORY_UTILIZATION: ${{ env.GPU_MEMORY_UTILIZATION }}
-                NGINX_HTTPS_HOST_PORT: ${{ env.NGINX_HTTPS_HOST_PORT }}
-                NETWORK_NAME: vllm-qwen-network-${{ env.DEPLOY_ENV_NAME }}
-              run: |
-                set -euo pipefail
-                systemd-run --user --scope podman compose \
-                  -f "$COMPOSE_FILE_PATH" \
-                  -f "$COMPOSE_OVERRIDE_PATH" \
-                  up -d --no-build --force-recreate      
+        env:
+          ENV_NAME: ${{ env.DEPLOY_ENV_NAME }}
+          MODEL_NAME: ${{ env.MODEL_NAME }}
+          MAX_MODEL_LEN: ${{ env.MAX_MODEL_LEN }}
+          GPU_MEMORY_UTILIZATION: ${{ env.GPU_MEMORY_UTILIZATION }}
+          NGINX_HTTPS_HOST_PORT: ${{ env.NGINX_HTTPS_HOST_PORT }}
+          NETWORK_NAME: vllm-qwen-network-${{ env.DEPLOY_ENV_NAME }}
+        run: |
+          set -euo pipefail
+          systemd-run --user --scope podman compose \
+            -f "$COMPOSE_FILE_PATH" \
+            -f "$COMPOSE_OVERRIDE_PATH" \
+            up -d --no-build --force-recreate      
 
       - name: Post-deploy port diagnostics
         env:
