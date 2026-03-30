@@ -10,6 +10,6 @@ COPY docker/nginx/docker-entrypoint.sh /docker-entrypoint-nginx-upstream.sh
 
 RUN chmod 755 /docker-entrypoint-nginx-upstream.sh
 
-EXPOSE 80 443
+EXPOSE 443
 
 ENTRYPOINT ["/docker-entrypoint-nginx-upstream.sh"]

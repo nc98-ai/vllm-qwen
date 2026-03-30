@@ -116,11 +116,12 @@ curl -k https://127.0.0.1:443/v1/models \
 ### Verifier une completion
 
 ```bash
+
 curl -k https://127.0.0.1:443/v1/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $VLLM_API_KEY" \
   -d '{
-    "model": "Qwen/Qwen3.5-2B",
+    "model": "Qwen/Qwen3.5-4B",
     "prompt": "Qui est Napoleon ?",
     "temperature": 0.2,
     "max_tokens": 80
