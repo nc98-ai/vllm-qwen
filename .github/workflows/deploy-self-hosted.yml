@@ -263,10 +263,13 @@ jobs:
           NETWORK_NAME: vllm-qwen-network-${{ env.DEPLOY_ENV_NAME }}
         run: |
           set -euo pipefail
-          systemd-run --user --scope podman compose \
+          # En vidant l'ID de tracking, le Runner GitHub ignorera ces processus à la fin du job
+          export RUNNER_TRACKING_ID=""
+          
+          podman compose \
             -f "$COMPOSE_FILE_PATH" \
             -f "$COMPOSE_OVERRIDE_PATH" \
-            up -d --no-build --force-recreate      
+            up -d --no-build --force-recreate
 
       - name: Post-deploy port diagnostics
         env:
