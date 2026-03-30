@@ -13,10 +13,9 @@ on:
       target_env:
         description: "Environnement GitHub contenant les secrets de deploiement"
         required: true
-        default: ENV_DEV-OPTNC
+        default: ENV_QUL-OPTNC
         type: choice
         options:
-          - ENV_DEV-OPTNC
           - ENV_QUL-OPTNC          
           - ENV_PRD-OPTNC
       network_name:
