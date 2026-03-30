@@ -25,7 +25,9 @@ HealthCmd=curl -fsS http://127.0.0.1:8000/v1/models >/dev/null
 HealthInterval=15s
 HealthRetries=20
 HealthTimeout=10s
-HealthStartPeriod=10m[Service]
+HealthStartPeriod=10m
+
+[Service]
 Restart=always
 TimeoutStartSec=900
 

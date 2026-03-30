@@ -204,20 +204,38 @@ jobs:
         run: |
           set -euo pipefail
           
+          # 1. Vérification de la version (Doit être >= 4.4)
+          echo "--- PODMAN VERSION ---"
+          podman --version
+          
+          # 2. Préparation du répertoire
           QUADLET_DIR="$HOME/.config/containers/systemd"
           mkdir -p "$QUADLET_DIR"
+          rm -f "$QUADLET_DIR"/* # Nettoyage pour éviter les conflits
           
+          # 3. Génération des fichiers à partir des templates
           envsubst < docker/quadlets/vllm-qwen.network.template > "$QUADLET_DIR/vllm-qwen.network"
           envsubst < docker/quadlets/vllm-qwen.container.template > "$QUADLET_DIR/vllm-qwen.container"
           envsubst < docker/quadlets/nginx-vllm.container.template > "$QUADLET_DIR/nginx-vllm.container"
           
+          # 4. Debug : Vérifier le contenu généré (pour voir si les sauts de ligne sont bons)
+          echo "--- DEBUG: CONTENT OF VLLM CONTAINER ---"
+          cat "$QUADLET_DIR/vllm-qwen.container"
+          
+          # 5. Rechargement de Systemd
           systemctl --user daemon-reload
           
+          # 6. Debug : Lister les unités générées par Podman
+          echo "--- DEBUG: GENERATED UNITS ---"
+          systemctl --user list-unit-files | grep -E "vllm|nginx" || echo "Aucune unité trouvée"
+
+          # 7. Activation et démarrage
+          # Note : Si Podman < 4.4, cette étape échouera car Quadlet n'est pas supporté.
           systemctl --user enable --now vllm-qwen.service
           systemctl --user enable --now nginx-vllm.service
-          
           systemctl --user restart vllm-qwen.service nginx-vllm.service
 
+          
       - name: Post-deploy port diagnostics
         env:
           DEPLOY_ENV_NAME: ${{ env.DEPLOY_ENV_NAME }}
