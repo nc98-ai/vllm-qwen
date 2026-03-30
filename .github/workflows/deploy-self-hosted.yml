@@ -210,6 +210,15 @@ jobs:
           set -Eeuo pipefail
           docker build -f docker/nginx/Dockerfile -t "$NGINX_IMAGE" .
 
+      - name: Sanity check rootless port publish
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          docker run -d --rm --name port-test -p 8444:80 docker.io/library/nginx:alpine
+          sleep 1
+          curl -fsS http://127.0.0.1:8444 >/dev/null
+          docker stop port-test
+
       - name: Remove only current deployment containers
         env:
           ENV_NAME: ${{ env.DEPLOY_ENV_NAME }}
@@ -242,3 +251,17 @@ jobs:
             -f "$COMPOSE_FILE_PATH" \
             -f "$COMPOSE_OVERRIDE_PATH" \
             up -d --no-build --force-recreate
+
+      - name: Post-deploy port diagnostics
+        env:
+          NGINX_HTTPS_HOST_PORT: ${{ env.NGINX_HTTPS_HOST_PORT }}
+          VLLM_API_KEY: ${{ secrets.VLLM_API_KEY }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          echo "NGINX_HTTPS_HOST_PORT=${NGINX_HTTPS_HOST_PORT}"
+          docker ps --format "table {{.Names}}\t{{.Ports}}" | sed -n '1,5p'
+          podman port nginx-vllm-qwen-prd || true
+          ss -tnlp || true
+          curl -fsS -k "https://127.0.0.1:${NGINX_HTTPS_HOST_PORT}/v1/models" \
+            -H "Authorization: Bearer ${VLLM_API_KEY}" >/dev/null

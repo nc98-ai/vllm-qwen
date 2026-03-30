@@ -181,7 +181,37 @@ curl -s -o /dev/null -w "dispatch HTTP %{http_code}\n" -X POST \
 ```
 
 ### Lancer un deploiement PROD
+Creer un service de lancement du runner dans ~/.config/systemd/user/github-actions-runner.service
+```conf
+#~/.config/systemd/user/github-actions-runner.service
+[Unit]
+Description=GitHub Actions Runner (self-hosted)
+After=network.target
 
+[Service]
+Type=simple
+WorkingDirectory=/opt/podman/vllm-qwen/actions-runner
+ExecStart=/bin/bash /opt/podman/vllm-qwen/actions-runner/run.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target
+```
+
+```bash
+# Active le user lingering (important pour rootless)
+loginctl enable-linger $USER
+
+# charger/lancer le service
+systemctl --user daemon-reload
+systemctl --user enable --now github-actions-runner.service
+
+# verifier 
+systemctl --user status github-actions-runner.service
+```
+
+Demarrer les conteneurs
 ```bash
 curl -s -o /dev/null -w "dispatch HTTP %{http_code}\n" -X POST \
   -H "Accept: application/vnd.github+json" \
