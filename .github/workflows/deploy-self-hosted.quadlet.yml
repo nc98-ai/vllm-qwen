@@ -47,33 +47,33 @@ jobs:
         run: |
           set -Eeuo pipefail
 
-          if[ -n "${ENV_NAME_VAR:-}" ]; then
+          if [ -n "${ENV_NAME_VAR:-}" ]; then
             deploy_env_name="${ENV_NAME_VAR}"
           else
             deploy_env_name="${TARGET_ENV}"
           fi
 
-          if[ -z "$(printf '%s' "${deploy_env_name}" | tr -d '[:space:]')" ]; then
+          if [ -z "$(printf '%s' "${deploy_env_name}" | tr -d '[:space:]')" ]; then
             echo "Missing required environment variable: ENV_NAME." >&2
             exit 1
           fi
 
-          if[ -z "$(printf '%s' "${GPU_MEMORY_UTILIZATION_VAR:-}" | tr -d '[:space:]')" ]; then
+          if [ -z "$(printf '%s' "${GPU_MEMORY_UTILIZATION_VAR:-}" | tr -d '[:space:]')" ]; then
             echo "Missing required environment variable: GPU_MEMORY_UTILIZATION." >&2
             exit 1
           fi
 
-          if[ -z "$(printf '%s' "${MODEL_NAME_VAR:-}" | tr -d '[:space:]')" ]; then
+          if [ -z "$(printf '%s' "${MODEL_NAME_VAR:-}" | tr -d '[:space:]')" ]; then
             echo "Missing required environment variable: MODEL_NAME." >&2
             exit 1
           fi
 
-          if[ -z "$(printf '%s' "${MAX_MODEL_LEN_VAR:-}" | tr -d '[:space:]')" ]; then
+          if [ -z "$(printf '%s' "${MAX_MODEL_LEN_VAR:-}" | tr -d '[:space:]')" ]; then
             echo "Missing required environment variable: MAX_MODEL_LEN." >&2
             exit 1
           fi
 
-          if[ -z "$(printf '%s' "${NGINX_HTTPS_HOST_PORT_VAR:-}" | tr -d '[:space:]')" ]; then
+          if [ -z "$(printf '%s' "${NGINX_HTTPS_HOST_PORT_VAR:-}" | tr -d '[:space:]')" ]; then
             echo "Missing required environment variable: NGINX_HTTPS_HOST_PORT." >&2
             exit 1
           fi
@@ -84,6 +84,7 @@ jobs:
           echo "MAX_MODEL_LEN=${MAX_MODEL_LEN_VAR}" >> "$GITHUB_ENV"
           echo "GPU_MEMORY_UTILIZATION=${GPU_MEMORY_UTILIZATION_VAR}" >> "$GITHUB_ENV"
           echo "NGINX_HTTPS_HOST_PORT=${NGINX_HTTPS_HOST_PORT_VAR}" >> "$GITHUB_ENV"
+
 
       - name: Resolve persistent deploy directories
         shell: bash
