@@ -1,0 +1,5 @@
+[Unit]
+Description=Réseau Podman pour vLLM et Nginx
+
+[Network]
+NetworkName=vllm-qwen-network-${ENV_NAME}

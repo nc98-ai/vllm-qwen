@@ -1,0 +1,18 @@
+[Unit]
+Description=GitHub Actions Runner (self-hosted)
+After=network.target
+
+[Service]
+Type=simple
+
+# %t sera automatiquement remplacé par /run/user/votre_uid
+Environment=XDG_RUNTIME_DIR=%t
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=%t/bus
+
+WorkingDirectory=/opt/podman/vllm-qwen/actions-runner
+ExecStart=/bin/bash /opt/podman/vllm-qwen/actions-runner/run.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

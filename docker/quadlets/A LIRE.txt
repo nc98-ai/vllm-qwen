@@ -1,0 +1,7 @@
+docker/quadlets/vllm-qwen-actions-runner.quadlet.service 
+à copier ici:  ~/.config/systemd/user/vllm-qwen-actions-runner.quadlet.service
+Puis:
+systemctl --user daemon-reload
+systemctl --user enable vllm-qwen-actions-runner.quadlet.service
+systemctl --user restart vllm-qwen-actions-runner.quadlet.service
+systemctl --user status vllm-qwen-actions-runner.quadlet.service

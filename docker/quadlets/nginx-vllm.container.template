@@ -1,0 +1,33 @@
+[Unit]
+Description=Proxy Nginx pour vLLM
+After=vllm-qwen.service
+Requires=vllm-qwen.service
+
+[Container]
+Image=${NGINX_IMAGE}
+ContainerName=nginx-vllm-qwen-${ENV_NAME}
+Network=vllm-qwen.network
+
+# Port exposé sur l'hôte
+PublishPort=${NGINX_HTTPS_HOST_PORT}:443
+
+# Variables d'environnement
+Environment=TZ=Pacific/Noumea
+Environment=NGINX_BACKEND_UPSTREAM=vllm_qwen-${ENV_NAME}:8000
+Environment=NGINX_HTTPS_LISTEN_PORT=443
+Environment=NGINX_BACKEND_WARMUP_ENABLED=true
+Environment=NGINX_BACKEND_WARMUP_PROMPT=warmup
+Environment=NGINX_BACKEND_WARMUP_MAX_TOKENS=1
+Environment=NGINX_BACKEND_WARMUP_TIMEOUT=120
+
+# Volumes / Secrets
+Volume=${RUNTIME_DIR}/secrets/NGINX_SSL_CERT:/run/secrets/NGINX_SSL_CERT:ro
+Volume=${RUNTIME_DIR}/secrets/NGINX_SSL_KEY:/run/secrets/NGINX_SSL_KEY:ro
+Volume=${RUNTIME_DIR}/secrets/NGINX_SSL_FULLCHAIN:/run/secrets/NGINX_SSL_FULLCHAIN:ro
+Volume=${RUNTIME_DIR}/vllm_api_key.txt:/run/secrets/vllm_api_key:ro
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

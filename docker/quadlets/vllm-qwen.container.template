@@ -1,0 +1,33 @@
+[Unit]
+Description=Conteneur vLLM Qwen
+After=network-online.target
+
+[Container]
+Image=docker.io/vllm/vllm-openai:v0.18.0-cu130
+ContainerName=vllm_qwen-${ENV_NAME}
+Network=vllm-qwen.network
+
+# Assignation du GPU NVIDIA
+PodmanArgs=--gpus=all
+
+# Variables d'environnement
+Environment=VLLM_API_KEY_FILE=/run/secrets/vllm_api_key
+
+# Volumes
+Volume=${HF_CACHE_DIR}:/root/.cache/huggingface:rw
+Volume=${RUNTIME_DIR}/vllm_api_key.txt:/run/secrets/vllm_api_key:ro
+
+# La commande de lancement
+Exec=${MODEL_NAME} --language-model-only --gpu-memory-utilization ${GPU_MEMORY_UTILIZATION} --max-model-len ${MAX_MODEL_LEN} --kv-cache-dtype fp8
+
+# Configuration du Healthcheck
+HealthCmd=curl -fsS http://127.0.0.1:8000/v1/models >/dev/null
+HealthInterval=15s
+HealthRetries=20
+HealthTimeout=10s
+HealthStartPeriod=10m[Service]
+Restart=always
+TimeoutStartSec=900
+
+[Install]
+WantedBy=default.target
