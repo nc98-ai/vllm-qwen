@@ -22,7 +22,11 @@ on:
         description: Override the Docker network name (optional)
         required: false
         default: ""
-
+      force_friday:
+        description: "Forcer le déploiement malgré le vendredi (URGENCE UNIQUEMENT)"
+        required: false
+        type: boolean
+        default: false
 jobs:
   deploy:
     runs-on: self-hosted
@@ -33,6 +37,22 @@ jobs:
         run: |
           echo "XDG_RUNTIME_DIR=/run/user/$(id -u)" >> "$GITHUB_ENV"
           echo "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus" >> "$GITHUB_ENV"
+
+      - name: Vérification "No-Deploy Friday"
+        shell: bash
+        env:
+          FORCE_FRIDAY: ${{ inputs.force_friday }}
+        run: |
+          JOUR_ACTUEL=$(date +%u)
+          
+          if [ "$JOUR_ACTUEL" -eq 5 ] && [ "$FORCE_FRIDAY" != "true" ]; then
+            echo "❌ Blocage : Déploiement interdit le vendredi."
+            echo "Pour forcer ce déploiement en cas d'urgence, cochez l'option"
+            echo "'Forcer le déploiement malgré le vendredi' lors du lancement."
+            exit 1
+          elif [ "$JOUR_ACTUEL" -eq 5 ] && [ "$FORCE_FRIDAY" == "true" ]; then
+            echo "⚠️ Attention : Déploiement forcé un vendredi par l'utilisateur."
+          fi
 
       - name: Resolve deployment names
         shell: bash

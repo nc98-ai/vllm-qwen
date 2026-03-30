@@ -7,9 +7,10 @@ Le projet repose sur deux services Docker :
 - `vllm` pour l'inference
 - `nginx` pour l'exposition HTTPS et le controle d'acces
 
-Le deploiement cible est automatise via le workflow :
+Le deploiement cible est automatise via deux workflows CD totalement fonctionnels, testes et valides :
 
-- `.github/workflows/deploy-self-hosted.yml`
+- `.github/workflows/deploy-self-hosted.yml` (compatible `podman compose`)
+- `.github/workflows/deploy-self-hosted.quadlet.yml` (compatible `quadlets` sur Rocky Linux 9)
 
 ## Fichiers importants
 
@@ -17,6 +18,10 @@ Le deploiement cible est automatise via le workflow :
 
 - `docker/docker-compose-vllm-nginx.yml`
 - `.github/workflows/deploy-self-hosted.yml`
+- `.github/workflows/deploy-self-hosted.quadlet.yml`
+- `docker/quadlets/vllm-qwen.network.template`
+- `docker/quadlets/vllm-qwen.container.template`
+- `docker/quadlets/nginx-vllm.container.template`
 
 ### nginx
 
@@ -30,9 +35,11 @@ Le deploiement cible est automatise via le workflow :
 - `docs/FONCTIONNEL.md`
 - `docs/SECURITE.md`
 
-## Fonctionnement du workflow
+## Fonctionnement des workflows CD
 
-Le workflow self-hosted fait les operations suivantes :
+### Workflow compose (`deploy-self-hosted.yml`)
+
+Le workflow self-hosted `compose` fait les operations suivantes :
 
 1. resolution du nom d'environnement de deploiement
 2. validation de `ENV_NAME`
@@ -46,6 +53,24 @@ Le workflow self-hosted fait les operations suivantes :
 10. build local de l'image `nginx`
 11. suppression ciblee des conteneurs du stack courant
 12. redeploiement avec `docker compose`
+
+### Workflow quadlet (`deploy-self-hosted.quadlet.yml`)
+
+Le workflow self-hosted `quadlet` fait les operations suivantes :
+
+1. resolution du nom d'environnement de deploiement
+2. validation de `ENV_NAME`
+3. validation de `MODEL_NAME`
+4. validation de `MAX_MODEL_LEN`
+5. validation de `GPU_MEMORY_UTILIZATION`
+6. validation de `NGINX_HTTPS_HOST_PORT`
+7. creation des repertoires persistants de runtime
+8. preparation des secrets
+9. build local de l'image `nginx`
+10. generation des fichiers quadlet depuis les templates dans `docker/quadlets`
+11. `systemctl --user daemon-reload`
+12. redemarrage des services `vllm-qwen.service` et `nginx-vllm.service`
+13. verification post-deploiement via appel HTTPS local
 
 ## Variables GitHub attendues
 
@@ -172,11 +197,23 @@ cd docker/nginx/
 
 ### Lancer un deploiement DEV
 
+#### Variante podman compose
+
 ```bash
 curl -s -o /dev/null -w "dispatch HTTP %{http_code}\n" -X POST \
   -H "Accept: application/vnd.github+json" \
   -H "Authorization: Bearer $GITHUB_TOKEN" \
   https://api.github.com/repos/nc98-ai/vllm-qwen/actions/workflows/deploy-self-hosted.yml/dispatches \
+  -d '{"ref":"env-developpement","inputs":{"target_env":"ENV_DEV-OPTNC"}}'
+```
+
+#### Variante quadlet (Rocky Linux 9)
+
+```bash
+curl -s -o /dev/null -w "dispatch HTTP %{http_code}\n" -X POST \
+  -H "Accept: application/vnd.github+json" \
+  -H "Authorization: Bearer $GITHUB_TOKEN" \
+  https://api.github.com/repos/nc98-ai/vllm-qwen/actions/workflows/deploy-self-hosted.quadlet.yml/dispatches \
   -d '{"ref":"env-developpement","inputs":{"target_env":"ENV_DEV-OPTNC"}}'
 ```
 
@@ -212,11 +249,23 @@ systemctl --user status github-actions-runner.service
 ```
 
 Demarrer les conteneurs
+#### Variante podman compose
+
 ```bash
 curl -s -o /dev/null -w "dispatch HTTP %{http_code}\n" -X POST \
   -H "Accept: application/vnd.github+json" \
   -H "Authorization: Bearer $GITHUB_TOKEN" \
   https://api.github.com/repos/nc98-ai/vllm-qwen/actions/workflows/deploy-self-hosted.yml/dispatches \
+  -d '{"ref":"main","inputs":{"target_env":"ENV_PRD-OPTNC"}}'
+```
+
+#### Variante quadlet (Rocky Linux 9)
+
+```bash
+curl -s -o /dev/null -w "dispatch HTTP %{http_code}\n" -X POST \
+  -H "Accept: application/vnd.github+json" \
+  -H "Authorization: Bearer $GITHUB_TOKEN" \
+  https://api.github.com/repos/nc98-ai/vllm-qwen/actions/workflows/deploy-self-hosted.quadlet.yml/dispatches \
   -d '{"ref":"main","inputs":{"target_env":"ENV_PRD-OPTNC"}}'
 ```
 
