@@ -204,7 +204,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          docker compose \
+          podman compose \
             -f "$COMPOSE_FILE_PATH" \
             -f "$COMPOSE_OVERRIDE_PATH" \
             config -q
@@ -213,16 +213,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          docker build -f docker/nginx/Dockerfile -t "$NGINX_IMAGE" .
-
-      - name: Sanity check rootless port publish
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          docker run -d --rm --name port-test -p 8444:80 docker.io/library/nginx:alpine
-          sleep 1
-          curl -fsS http://127.0.0.1:8444 >/dev/null
-          docker stop port-test
+          podman build -f docker/nginx/Dockerfile -t "$NGINX_IMAGE" .
 
       - name: Remove only current deployment containers
         env:
@@ -237,8 +228,8 @@ jobs:
           )
 
           for container in "${containers[@]}"; do
-            if docker container inspect "$container" >/dev/null 2>&1; then
-              docker rm -f "$container"
+            if podman container inspect "$container" >/dev/null 2>&1; then
+              podman rm -f "$container"
             fi
           done
 
@@ -252,21 +243,41 @@ jobs:
           NETWORK_NAME: vllm-qwen-network-${{ env.DEPLOY_ENV_NAME }}
         run: |
           set -euo pipefail
-          docker compose \
+          podman compose \
             -f "$COMPOSE_FILE_PATH" \
             -f "$COMPOSE_OVERRIDE_PATH" \
             up -d --no-build --force-recreate
 
       - name: Post-deploy port diagnostics
         env:
+          DEPLOY_ENV_NAME: ${{ env.DEPLOY_ENV_NAME }}
           NGINX_HTTPS_HOST_PORT: ${{ env.NGINX_HTTPS_HOST_PORT }}
           VLLM_API_KEY: ${{ secrets.VLLM_API_KEY }}
         shell: bash
         run: |
           set -Eeuo pipefail
+          nginx_container="nginx-vllm-qwen-${DEPLOY_ENV_NAME}"
+          vllm_container="vllm_qwen-${DEPLOY_ENV_NAME}"
+
           echo "NGINX_HTTPS_HOST_PORT=${NGINX_HTTPS_HOST_PORT}"
-          docker ps --format "table {{.Names}}\t{{.Ports}}" | sed -n '1,5p'
-          podman port nginx-vllm-qwen-prd || true
+          podman ps --format "table {{.Names}}\t{{.Ports}}" | sed -n '1,5p'
+          podman port "${nginx_container}" || true
           ss -tnlp || true
-          curl -fsS -k "https://127.0.0.1:${NGINX_HTTPS_HOST_PORT}/v1/models" \
-            -H "Authorization: Bearer ${VLLM_API_KEY}" >/dev/null
+
+          # Nginx and vLLM can take a short time to become ready right after compose up.
+          ok=0
+          for _ in $(seq 1 30); do
+            if curl -fsS --http1.1 -k "https://127.0.0.1:${NGINX_HTTPS_HOST_PORT}/v1/models" \
+              -H "Authorization: Bearer ${VLLM_API_KEY}" >/dev/null; then
+              ok=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "${ok}" -ne 1 ]; then
+            echo "Post-deploy check failed after retries. Dumping container logs..." >&2
+            podman logs --tail 150 "${nginx_container}" || true
+            podman logs --tail 150 "${vllm_container}" || true
+            exit 1
+          fi

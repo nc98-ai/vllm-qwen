@@ -1,9 +1,14 @@
+docker/nginx/certs/**
+certs/*
 *.pyc
 *.pkl
 *.log
 *.db
 *opt.sh
 *.key
+*.crt
 secrets/
 docker/vllm_api_key.txt
 actions-runner/*
+
+
