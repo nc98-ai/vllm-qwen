@@ -1,12 +1,13 @@
 [Unit]
-Description=Proxy Nginx pour vLLM
-After=vllm-qwen.service
-Requires=vllm-qwen.service
+Description=Proxy Nginx pour vLLM - Environnement ${ENV_NAME}
+After=vllm-qwen-${ENV_NAME}.service
+Requires=vllm-qwen-${ENV_NAME}.service
 
 [Container]
 Image=${NGINX_IMAGE}
+[Container]
 ContainerName=nginx-vllm-qwen-${ENV_NAME}
-Network=vllm-qwen.network
+Network=vllm-qwen-${ENV_NAME}.network
 
 # Port exposé sur l'hôte
 PublishPort=${NGINX_HTTPS_HOST_PORT}:443

@@ -1,11 +1,11 @@
 [Unit]
-Description=Conteneur vLLM Qwen
+Description=Conteneur vLLM Qwen - Environnement ${ENV_NAME}
 After=network-online.target
 
 [Container]
 Image=docker.io/vllm/vllm-openai:v0.18.0-cu130
 ContainerName=vllm_qwen-${ENV_NAME}
-Network=vllm-qwen.network
+Network=vllm-qwen-${ENV_NAME}.network
 
 # Assignation du GPU NVIDIA
 PodmanArgs=--gpus=all
