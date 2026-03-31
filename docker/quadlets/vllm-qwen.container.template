@@ -18,7 +18,7 @@ Volume=${HF_CACHE_DIR}:/root/.cache/huggingface:rw
 Volume=${RUNTIME_DIR}/vllm_api_key.txt:/run/secrets/vllm_api_key:ro
 
 # La commande de lancement
-Exec=${MODEL_NAME} --language-model-only --gpu-memory-utilization ${GPU_MEMORY_UTILIZATION} --max-model-len ${MAX_MODEL_LEN} --kv-cache-dtype fp8
+Exec=${MODEL_NAME} --language-model-only --reasoning-parser qwen3 --gpu-memory-utilization ${GPU_MEMORY_UTILIZATION} --max-model-len ${MAX_MODEL_LEN} --kv-cache-dtype fp8
 
 # Configuration du Healthcheck
 HealthCmd=curl -fsS http://127.0.0.1:8000/v1/models >/dev/null
