@@ -37,15 +37,16 @@ Le workflow self-hosted fait les operations suivantes :
 1. resolution du nom d'environnement de deploiement
 2. validation de `ENV_NAME`
 3. validation de `MODEL_NAME`
-4. validation de `MAX_MODEL_LEN`
-5. validation de `GPU_MEMORY_UTILIZATION`
-6. validation de `NGINX_HTTPS_LISTEN_PORT`
-7. creation des repertoires persistants de runtime
-8. preparation des secrets
-9. generation d'un fichier d'override `docker-compose`
-10. build local de l'image `nginx`
-11. suppression ciblee des conteneurs du stack courant
-12. redeploiement avec `docker compose`
+4. validation de `MODEL_REVISION`
+5. validation de `MAX_MODEL_LEN`
+6. validation de `KV_CACHE_MEMORY_BYTES`
+7. validation de `NGINX_HTTPS_LISTEN_PORT`
+8. creation des repertoires persistants de runtime
+9. preparation des secrets
+10. generation d'un fichier d'override `docker-compose`
+11. build local de l'image `nginx`
+12. suppression ciblee des conteneurs du stack courant
+13. redeploiement avec `docker compose`
 
 ## Variables GitHub attendues
 
@@ -53,8 +54,9 @@ Le workflow self-hosted fait les operations suivantes :
 
 - `ENV_NAME`
 - `MODEL_NAME`
+- `MODEL_REVISION`
 - `MAX_MODEL_LEN`
-- `GPU_MEMORY_UTILIZATION`
+- `KV_CACHE_MEMORY_BYTES`
 - `NGINX_HTTPS_LISTEN_PORT`
 
 ### Secrets GitHub
@@ -90,16 +92,16 @@ Le parametre :
 
 est injecte depuis la variable GitHub `MAX_MODEL_LEN`.
 
-### VRAM
+### Cache KV en VRAM
 
 Le parametre :
 
 ```yaml
-- "--gpu-memory-utilization"
-- "${GPU_MEMORY_UTILIZATION}"
+- "--kv-cache-memory-bytes"
+- "${KV_CACHE_MEMORY_BYTES}"
 ```
 
-est injecte depuis la variable GitHub `GPU_MEMORY_UTILIZATION`.
+est injecte depuis la variable GitHub `KV_CACHE_MEMORY_BYTES`.
 
 ### Cache HF persistant
 

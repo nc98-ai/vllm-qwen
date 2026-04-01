@@ -73,7 +73,7 @@ Chaque environnement GitHub doit definir :
 - `ENV_NAME`
 - `MODEL_NAME`
 - `MAX_MODEL_LEN`
-- `GPU_MEMORY_UTILIZATION`
+- `KV_CACHE_MEMORY_BYTES`
 - `NGINX_HTTPS_LISTEN_PORT`
 
 Chaque environnement GitHub doit aussi fournir les secrets necessaires :

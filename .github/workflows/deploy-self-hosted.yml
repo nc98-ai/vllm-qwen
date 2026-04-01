@@ -35,7 +35,7 @@ jobs:
           MODEL_NAME_VAR: ${{ vars.MODEL_NAME }}
           MODEL_REVISION_VAR: ${{ vars.MODEL_REVISION }}
           MAX_MODEL_LEN_VAR: ${{ vars.MAX_MODEL_LEN }}
-          GPU_MEMORY_UTILIZATION_VAR: ${{ vars.GPU_MEMORY_UTILIZATION }}
+          KV_CACHE_MEMORY_BYTES_VAR: ${{ vars.KV_CACHE_MEMORY_BYTES }}
           NGINX_HTTPS_LISTEN_PORT_VAR: ${{ vars.NGINX_HTTPS_LISTEN_PORT }}
           REPO_NAME: ${{ github.event.repository.name }}
         run: |
@@ -52,8 +52,8 @@ jobs:
             exit 1
           fi
 
-          if [ -z "$(printf '%s' "${GPU_MEMORY_UTILIZATION_VAR:-}" | tr -d '[:space:]')" ]; then
-            echo "Missing required environment variable: GPU_MEMORY_UTILIZATION. Define vars.GPU_MEMORY_UTILIZATION in the selected GitHub environment (${TARGET_ENV})." >&2
+          if [ -z "$(printf '%s' "${KV_CACHE_MEMORY_BYTES_VAR:-}" | tr -d '[:space:]')" ]; then
+            echo "Missing required environment variable: KV_CACHE_MEMORY_BYTES. Define vars.KV_CACHE_MEMORY_BYTES in the selected GitHub environment (${TARGET_ENV})." >&2
             exit 1
           fi
 
@@ -82,7 +82,7 @@ jobs:
           echo "MODEL_NAME=${MODEL_NAME_VAR}" >> "$GITHUB_ENV"
           echo "MODEL_REVISION=${MODEL_REVISION_VAR}" >> "$GITHUB_ENV"
           echo "MAX_MODEL_LEN=${MAX_MODEL_LEN_VAR}" >> "$GITHUB_ENV"
-          echo "GPU_MEMORY_UTILIZATION=${GPU_MEMORY_UTILIZATION_VAR}" >> "$GITHUB_ENV"
+          echo "KV_CACHE_MEMORY_BYTES=${KV_CACHE_MEMORY_BYTES_VAR}" >> "$GITHUB_ENV"
           echo "NGINX_HTTPS_LISTEN_PORT=${NGINX_HTTPS_LISTEN_PORT_VAR}" >> "$GITHUB_ENV"
 
       - name: Resolve persistent deploy directories
@@ -291,7 +291,7 @@ jobs:
           MODEL_NAME: ${{ env.MODEL_NAME }}
           MODEL_REVISION: ${{ env.MODEL_REVISION }}
           MAX_MODEL_LEN: ${{ env.MAX_MODEL_LEN }}
-          GPU_MEMORY_UTILIZATION: ${{ env.GPU_MEMORY_UTILIZATION }}
+          KV_CACHE_MEMORY_BYTES: ${{ env.KV_CACHE_MEMORY_BYTES }}
           NGINX_HTTPS_LISTEN_PORT: ${{ env.NGINX_HTTPS_LISTEN_PORT }}
           NETWORK_NAME: ${{ inputs.network_name }}
         run: |

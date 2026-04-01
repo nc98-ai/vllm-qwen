@@ -57,8 +57,8 @@ services:
       - "${MODEL_REVISION}"
       - "--language-model-only"       
       
-      - "--gpu-memory-utilization"
-      - "${GPU_MEMORY_UTILIZATION}"
+      - "--kv-cache-memory-bytes"
+      - "${KV_CACHE_MEMORY_BYTES}"
       - "--max-model-len"
       - "${MAX_MODEL_LEN}"
       - "--kv-cache-dtype"
