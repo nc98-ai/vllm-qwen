@@ -58,7 +58,9 @@ services:
       - "--max-model-len"
       - "${MAX_MODEL_LEN}"
       - "--kv-cache-dtype"
-      - "fp8"      
+      - "fp8"
+      - "--default-chat-template-kwargs"
+      - '{"enable_thinking": false}'
       # - "--quantization"
       # - "fp8"
 
