@@ -59,8 +59,8 @@ services:
       
       # - "--kv-cache-memory-bytes"
       # - "${KV_CACHE_MEMORY_BYTES}"
-      - --"gpu-memory-utilization"
-       - "${GPU_MEMORY_UTILIZATION}"
+      - "--gpu-memory-utilization"
+      - "${GPU_MEMORY_UTILIZATION}"
       - "--max-model-len"
       - "${MAX_MODEL_LEN}"
       - "--kv-cache-dtype"
