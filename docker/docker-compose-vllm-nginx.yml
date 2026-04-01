@@ -103,4 +103,4 @@ secrets:
 
 networks:
   app-network:
-    name: ${NETWORK_NAME:-vllm-qwen-network-${ENV_NAME:-dev}}
+    name: vllm-qwen-network-${ENV_NAME:-dev}
