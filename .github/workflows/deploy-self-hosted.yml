@@ -95,6 +95,39 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Resolve Docker CLI
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          docker_bin="$(command -v docker || true)"
+          if [ -z "${docker_bin}" ]; then
+            echo "Docker CLI not found on this self-hosted runner." >&2
+            exit 1
+          fi
+
+          echo "DOCKER_BIN=${docker_bin}" >> "$GITHUB_ENV"
+
+      - name: Verify native Docker engine
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          docker_version="$("$DOCKER_BIN" --version 2>&1 || true)"
+          compose_version="$("$DOCKER_BIN" compose version 2>&1 || true)"
+          docker_info="$("$DOCKER_BIN" info --format '{{.ServerVersion}} {{.OperatingSystem}} {{.Name}}' 2>&1 || true)"
+
+          printf 'docker --version: %s\n' "${docker_version}"
+          printf 'docker compose version: %s\n' "${compose_version}"
+          printf 'docker info: %s\n' "${docker_info}"
+
+          combined_output="$(printf '%s\n%s\n%s\n' "${docker_version}" "${compose_version}" "${docker_info}")"
+          if printf '%s' "${combined_output}" | grep -Eiq 'podman|emulate docker cli|podman-compose|rootlessport'; then
+            echo "This runner resolves docker commands to Podman emulation instead of a native Docker engine." >&2
+            echo "Install and expose a real Docker daemon/CLI for the runner, or update the runner configuration so docker no longer points to Podman." >&2
+            exit 1
+          fi
+
       - name: Resolve image references
         shell: bash
         run: |
@@ -197,7 +230,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          docker compose \
+          "$DOCKER_BIN" compose \
             -f "$COMPOSE_FILE_PATH" \
             -f "$COMPOSE_OVERRIDE_PATH" \
             config -q
@@ -206,7 +239,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          docker build -f docker/nginx/Dockerfile -t "$NGINX_IMAGE" .
+          "$DOCKER_BIN" build -f docker/nginx/Dockerfile -t "$NGINX_IMAGE" .
 
       - name: Remove only current deployment containers
         env:
@@ -221,10 +254,25 @@ jobs:
           )
 
           for container in "${containers[@]}"; do
-            if docker container inspect "$container" >/dev/null 2>&1; then
-              docker rm -f "$container"
+            if "$DOCKER_BIN" container inspect "$container" >/dev/null 2>&1; then
+              "$DOCKER_BIN" rm -f "$container"
             fi
           done
+
+      - name: Check HTTPS host port availability
+        env:
+          NGINX_HTTPS_LISTEN_PORT: ${{ env.NGINX_HTTPS_LISTEN_PORT }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          if ss -H -ltn "sport = :${NGINX_HTTPS_LISTEN_PORT}" | grep -q .; then
+            echo "Host TCP port ${NGINX_HTTPS_LISTEN_PORT} is already in use on this runner." >&2
+            echo "Choose a different vars.NGINX_HTTPS_LISTEN_PORT for this GitHub environment or stop the process currently listening on that port before redeploying." >&2
+            echo "Current listeners:" >&2
+            ss -H -ltnp "sport = :${NGINX_HTTPS_LISTEN_PORT}" >&2 || true
+            exit 1
+          fi
 
       - name: Deploy with Docker Compose
         env:
@@ -236,7 +284,7 @@ jobs:
           NETWORK_NAME: ${{ inputs.network_name }}
         run: |
           set -euo pipefail
-          docker compose \
+          "$DOCKER_BIN" compose \
             -f "$COMPOSE_FILE_PATH" \
             -f "$COMPOSE_OVERRIDE_PATH" \
             up -d --no-build --force-recreate
