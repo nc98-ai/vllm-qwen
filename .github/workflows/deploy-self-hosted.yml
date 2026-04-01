@@ -1,4 +1,4 @@
-name: Deploy (Self-Hosted)
+name: Deploy (Self-Hosted) avec Compose
 
 env:
   COMPOSE_FILE_PATH: docker/docker-compose-vllm-nginx.yml
@@ -13,8 +13,6 @@ on:
         type: choice
         options:
           - ENV_DEV-OPTNC
-          - ENV_QUL-OPTNC          
-          - ENV_PRD-OPTNC
       network_name:
         description: Override the Docker network name (optional)
         required: false

@@ -60,3 +60,20 @@ curl -k https://127.0.0.1:443/v1/completions \
     "max_tokens": 80
   }'
 ```
+```bash
+#pour prise en compte du non affochage des balises <think> si au démarrage du serveur --default-chat-template-kwargs {"enable_thinking": false} 
+curl -k https://127.0.0.1:443/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $VLLM_API_KEY" \
+  -d '{
+    "model": "Qwen/Qwen3.5-2B",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Qui est Napoleon ? Réponds en français."
+      }
+    ],
+    "temperature": 0.2,
+    "max_tokens": 80
+  }'  
+```
