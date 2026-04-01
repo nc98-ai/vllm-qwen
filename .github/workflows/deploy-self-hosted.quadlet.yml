@@ -58,6 +58,7 @@ jobs:
         shell: bash
         env:
           TARGET_ENV: ${{ inputs.target_env || github.ref_name }}
+          NETWORK_NAME_INPUT: ${{ inputs.network_name }}
           ENV_NAME_VAR: ${{ vars.ENV_NAME }}
           MODEL_NAME_VAR: ${{ vars.MODEL_NAME }}
           MAX_MODEL_LEN_VAR: ${{ vars.MAX_MODEL_LEN }}
@@ -67,16 +68,13 @@ jobs:
         run: |
           set -Eeuo pipefail
 
-          if [ -n "${ENV_NAME_VAR:-}" ]; then
-            deploy_env_name="${ENV_NAME_VAR}"
-          else
-            deploy_env_name="${TARGET_ENV}"
-          fi
-
-          if [ -z "$(printf '%s' "${deploy_env_name}" | tr -d '[:space:]')" ]; then
+          if [ -z "$(printf '%s' "${ENV_NAME_VAR:-}" | tr -d '[:space:]')" ]; then
             echo "Missing required environment variable: ENV_NAME." >&2
+            echo "Please define ENV_NAME in the GitHub Environment or repository variables." >&2
             exit 1
           fi
+
+          deploy_env_name="${ENV_NAME_VAR}"
 
           if [ -z "$(printf '%s' "${GPU_MEMORY_UTILIZATION_VAR:-}" | tr -d '[:space:]')" ]; then
             echo "Missing required environment variable: GPU_MEMORY_UTILIZATION." >&2
@@ -100,10 +98,22 @@ jobs:
 
           echo "DEPLOY_ENV_NAME=${deploy_env_name}" >> "$GITHUB_ENV"
           echo "DEPLOY_STACK_DIR=${REPO_NAME}-${deploy_env_name}" >> "$GITHUB_ENV"
+          if [ -n "${NETWORK_NAME_INPUT:-}" ]; then
+            if printf '%s' "${NETWORK_NAME_INPUT}" | grep -q -- "-${deploy_env_name}$"; then
+              echo "NETWORK_NAME=${NETWORK_NAME_INPUT}" >> "$GITHUB_ENV"
+            else
+              echo "NETWORK_NAME=${NETWORK_NAME_INPUT}-${deploy_env_name}" >> "$GITHUB_ENV"
+            fi
+          else
+            echo "NETWORK_NAME=vllm-qwen-network-${deploy_env_name}" >> "$GITHUB_ENV"
+          fi
           echo "MODEL_NAME=${MODEL_NAME_VAR}" >> "$GITHUB_ENV"
           echo "MAX_MODEL_LEN=${MAX_MODEL_LEN_VAR}" >> "$GITHUB_ENV"
           echo "GPU_MEMORY_UTILIZATION=${GPU_MEMORY_UTILIZATION_VAR}" >> "$GITHUB_ENV"
           echo "NGINX_HTTPS_HOST_PORT=${NGINX_HTTPS_HOST_PORT_VAR}" >> "$GITHUB_ENV"
+          echo "Resolved ENV_NAME=${deploy_env_name}"
+          echo "Resolved NETWORK_NAME=$(grep -E '^NETWORK_NAME=' \"$GITHUB_ENV\" | cut -d= -f2-)"
+          echo "Resolved DEPLOY_STACK_DIR=${REPO_NAME}-${deploy_env_name}"
 
       - name: Resolve persistent deploy directories
         shell: bash
@@ -112,6 +122,9 @@ jobs:
           echo "DEPLOY_CONTENT_DIR=${HOME}/SELFHOSTEDRUNNERS/${DEPLOY_STACK_DIR}" >> "$GITHUB_ENV"
           echo "RUNTIME_DIR=${HOME}/SELFHOSTEDRUNNERS/${DEPLOY_STACK_DIR}/runtime" >> "$GITHUB_ENV"
           echo "HF_CACHE_DIR=${HOME}/SELFHOSTEDRUNNERS/${DEPLOY_STACK_DIR}/huggingface-cache" >> "$GITHUB_ENV"
+          echo "Resolved DEPLOY_CONTENT_DIR=${HOME}/SELFHOSTEDRUNNERS/${DEPLOY_STACK_DIR}"
+          echo "Resolved RUNTIME_DIR=${HOME}/SELFHOSTEDRUNNERS/${DEPLOY_STACK_DIR}/runtime"
+          echo "Resolved HF_CACHE_DIR=${HOME}/SELFHOSTEDRUNNERS/${DEPLOY_STACK_DIR}/huggingface-cache"
 
       - name: Log runner user context
         shell: bash
@@ -212,6 +225,7 @@ jobs:
       - name: Deploy with Systemd (Podman Quadlet)
         env:
           ENV_NAME: ${{ env.DEPLOY_ENV_NAME }}
+          NETWORK_NAME: ${{ env.NETWORK_NAME }}
           MODEL_NAME: ${{ env.MODEL_NAME }}
           MAX_MODEL_LEN: ${{ env.MAX_MODEL_LEN }}
           GPU_MEMORY_UTILIZATION: ${{ env.GPU_MEMORY_UTILIZATION }}
@@ -225,6 +239,22 @@ jobs:
           
           QUADLET_DIR="$HOME/.config/containers/systemd"
           mkdir -p "$QUADLET_DIR"
+
+          # Nettoyage des anciens fichiers sans suffixe d'environnement (legacy).
+          # Cela évite des units "fantômes" du type vllm-qwen.network sans ENV_NAME.
+          legacy_units=(
+            "vllm-qwen.service"
+            "nginx-vllm.service"
+            "vllm-qwen.network"
+          )
+          for unit in "${legacy_units[@]}"; do
+            systemctl --user stop "$unit" >/dev/null 2>&1 || true
+            systemctl --user disable "$unit" >/dev/null 2>&1 || true
+          done
+          rm -f \
+            "$QUADLET_DIR/vllm-qwen.network" \
+            "$QUADLET_DIR/vllm-qwen.container" \
+            "$QUADLET_DIR/nginx-vllm.container"
           
           # On ajoute -${ENV_NAME} dans le nom du fichier de DESTINATION
           envsubst < docker/quadlets/vllm-qwen.network.template > "$QUADLET_DIR/vllm-qwen-${ENV_NAME}.network"
