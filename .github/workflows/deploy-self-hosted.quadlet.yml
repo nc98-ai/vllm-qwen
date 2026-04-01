@@ -46,7 +46,7 @@ jobs:
           JOUR_ACTUEL=$(date +%u)
           
           if [ "$JOUR_ACTUEL" -eq 5 ] && [ "$FORCE_FRIDAY" != "true" ]; then
-            echo "❌ Blocage : Déploiement interdit le vendredi."
+            echo "❌ Règlement entreprise : Déploiement interdit le vendredi."
             echo "Pour forcer ce déploiement en cas d'urgence, cochez l'option"
             echo "'Forcer le déploiement malgré le vendredi' lors du lancement."
             exit 1
