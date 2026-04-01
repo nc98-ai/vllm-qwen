@@ -266,21 +266,27 @@ curl -s -o /dev/null -w "dispatch HTTP %{http_code}\n" -X POST \
   -H "Accept: application/vnd.github+json" \
   -H "Authorization: Bearer $GITHUB_TOKEN" \
   https://api.github.com/repos/nc98-ai/vllm-qwen/actions/workflows/deploy-self-hosted.quadlet.yml/dispatches \
-  -d '{"ref":"main","inputs":{"target_env":"ENV_PRD-OPTNC"}}'
+  -d '{"ref":"env-qualification","inputs":{"target_env":"ENV_QUL-OPTNC"}}'
 ```
 
 
 ### Inspecter la sante du backend
 
 ```bash
-docker inspect --format '{{json .State.Health}}' vllm_qwen-dev
+docker inspect --format '{{json .State.Health}}' vllm_qwen-<ENV_NAME>
 ```
 
 ### Verifier le conteneur nginx
 
 ```bash
-docker ps --filter name=nginx-vllm-qwen
+docker ps --filter name=nginx-vllm-qwen-<ENV_NAME>
+
+#logs
+journalctl --user -u nginx-vllm-<ENV_NAME>.service -f
 ```
+### consulter les logs de déploiement sur le serveur
+journalctl --user -u vllm-qwen-actions-runner.quadlet.service -f
+
 
 ## Evolutions recommandees
 
