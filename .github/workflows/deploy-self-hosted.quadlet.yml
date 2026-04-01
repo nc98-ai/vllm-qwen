@@ -266,8 +266,8 @@ jobs:
           if [ "${ok}" -ne 1 ]; then
             echo "Post-deploy check failed after retries. Dumping container logs for ${DEPLOY_ENV_NAME}..." >&2
             echo "--- LOGS VLLM ---"
-            journalctl --user -u vllm-qwen-${DEPLOY_ENV_NAME}.service --no-pager --tail 150 || true
+            journalctl --user -u vllm-qwen-${DEPLOY_ENV_NAME}.service --no-pager || true
             echo "--- LOGS NGINX ---"
-            journalctl --user -u nginx-vllm-${DEPLOY_ENV_NAME}.service --no-pager --tail 150 || true
+            journalctl --user -u nginx-vllm-${DEPLOY_ENV_NAME}.service --no-pager || true
             exit 1
           fi
