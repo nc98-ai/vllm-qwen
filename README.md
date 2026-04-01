@@ -8,6 +8,7 @@
 
 - `ENV_NAME`
 - `MODEL_NAME`
+- `MODEL_REVISION`
 - `MAX_MODEL_LEN`
 - `GPU_MEMORY_UTILIZATION`
 - `NGINX_HTTPS_LISTEN_PORT`
@@ -54,7 +55,7 @@ curl -k https://127.0.0.1:443/v1/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $VLLM_API_KEY" \
   -d '{
-    "model": "Qwen/Qwen3.5-2B",
+    "model": "Qwen/Qwen3-4B-AWQ",
     "prompt": "Qui est Napoleon ?",
     "temperature": 0.2,
     "max_tokens": 80
@@ -66,7 +67,7 @@ curl -k https://127.0.0.1:443/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $VLLM_API_KEY" \
   -d '{
-    "model": "Qwen/Qwen3.5-2B",
+    "model": "Qwen/Qwen3-4B-AWQ",
     "messages": [
       {
         "role": "user",

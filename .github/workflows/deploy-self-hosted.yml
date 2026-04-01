@@ -20,7 +20,10 @@ on:
 
 jobs:
   deploy:
-    runs-on: self-hosted
+    runs-on:
+      - self-hosted
+      - linux
+      - docker
     environment: ${{ inputs.target_env || github.ref_name }}
     steps:
       - name: Resolve deployment names
@@ -29,6 +32,7 @@ jobs:
           TARGET_ENV: ${{ inputs.target_env || github.ref_name }}
           ENV_NAME_VAR: ${{ vars.ENV_NAME }}
           MODEL_NAME_VAR: ${{ vars.MODEL_NAME }}
+          MODEL_REVISION_VAR: ${{ vars.MODEL_REVISION }}
           MAX_MODEL_LEN_VAR: ${{ vars.MAX_MODEL_LEN }}
           GPU_MEMORY_UTILIZATION_VAR: ${{ vars.GPU_MEMORY_UTILIZATION }}
           NGINX_HTTPS_LISTEN_PORT_VAR: ${{ vars.NGINX_HTTPS_LISTEN_PORT }}
@@ -57,6 +61,11 @@ jobs:
             exit 1
           fi
 
+          if [ -z "$(printf '%s' "${MODEL_REVISION_VAR:-}" | tr -d '[:space:]')" ]; then
+            echo "Missing required environment variable: MODEL_REVISION. Define vars.MODEL_REVISION in the selected GitHub environment (${TARGET_ENV})." >&2
+            exit 1
+          fi
+
           if [ -z "$(printf '%s' "${MAX_MODEL_LEN_VAR:-}" | tr -d '[:space:]')" ]; then
             echo "Missing required environment variable: MAX_MODEL_LEN. Define vars.MAX_MODEL_LEN in the selected GitHub environment (${TARGET_ENV})." >&2
             exit 1
@@ -70,6 +79,7 @@ jobs:
           echo "DEPLOY_ENV_NAME=${deploy_env_name}" >> "$GITHUB_ENV"
           echo "DEPLOY_STACK_DIR=${REPO_NAME}-${deploy_env_name}" >> "$GITHUB_ENV"
           echo "MODEL_NAME=${MODEL_NAME_VAR}" >> "$GITHUB_ENV"
+          echo "MODEL_REVISION=${MODEL_REVISION_VAR}" >> "$GITHUB_ENV"
           echo "MAX_MODEL_LEN=${MAX_MODEL_LEN_VAR}" >> "$GITHUB_ENV"
           echo "GPU_MEMORY_UTILIZATION=${GPU_MEMORY_UTILIZATION_VAR}" >> "$GITHUB_ENV"
           echo "NGINX_HTTPS_LISTEN_PORT=${NGINX_HTTPS_LISTEN_PORT_VAR}" >> "$GITHUB_ENV"
@@ -278,6 +288,7 @@ jobs:
         env:
           ENV_NAME: ${{ env.DEPLOY_ENV_NAME }}
           MODEL_NAME: ${{ env.MODEL_NAME }}
+          MODEL_REVISION: ${{ env.MODEL_REVISION }}
           MAX_MODEL_LEN: ${{ env.MAX_MODEL_LEN }}
           GPU_MEMORY_UTILIZATION: ${{ env.GPU_MEMORY_UTILIZATION }}
           NGINX_HTTPS_LISTEN_PORT: ${{ env.NGINX_HTTPS_LISTEN_PORT }}

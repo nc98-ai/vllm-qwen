@@ -51,6 +51,10 @@ services:
       # - "--language-model-only"     
       
       - "${MODEL_NAME}"
+      - "--revision"
+      - "${MODEL_REVISION}"
+      - "--tokenizer-revision"
+      - "${MODEL_REVISION}"
       - "--language-model-only"       
       
       - "--gpu-memory-utilization"

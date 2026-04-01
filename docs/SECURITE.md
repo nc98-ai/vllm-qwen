@@ -75,6 +75,42 @@ Objectif :
 - eviter d'exposer un proxy pret alors que le backend n'est pas encore exploitable
 - reduire l'impact de la premiere requete utilisateur
 
+### 7. Choix du modele `Qwen/Qwen3-4B-AWQ`
+
+Le choix du modele Hugging Face `Qwen/Qwen3-4B-AWQ` repond aussi a un objectif de securite operationnelle et de maitrise de l'hebergement.
+
+Raisons principales :
+
+- hebergement local du modele sur l'infrastructure maitrisee du projet, ce qui evite d'envoyer les prompts et sorties vers une API tierce
+- taille 4B plus facile a exploiter sur une machine dediee, avec une consommation GPU et memoire plus previsible qu'un modele beaucoup plus volumineux
+- quantification `AWQ` utile pour reduire l'empreinte materielle, limiter la pression sur les ressources et diminuer le risque d'instabilites liees a un hote sur-sature
+- distribution via Hugging Face, ce qui facilite l'identification explicite du modele charge et la standardisation de la configuration de deploiement
+- possibilite de figer une revision Hugging Face precise via `MODEL_REVISION`, ce qui ameliore la reproductibilite du deploiement et limite le risque de derive silencieuse si la branche `main` evolue
+
+Ce choix ne rend pas le modele "plus sur" au sens applicatif a lui seul. La securite reste principalement assuree par :
+
+- le filtrage d'acces par cle API
+- l'exposition HTTPS uniquement
+- l'isolation du runtime sur l'hote self-hosted
+- la maitrise des secrets et des journaux
+
+Autrement dit, `Qwen/Qwen3-4B-AWQ` est ici un compromis pragmatique entre capacite, cout d'hebergement et maitrise des risques d'exploitation.
+
+### 8. Epinglage de revision du modele
+
+Le deploiement peut forcer une revision Hugging Face explicite du modele via la variable `MODEL_REVISION`.
+
+Interets de securite et d'exploitation :
+
+- figer un commit de modele connu plutot que suivre implicitement `main`
+- faciliter l'audit d'une version precise en cas d'incident ou de regression
+- reduire le risque de changement non relu sur les poids, le tokenizer ou la configuration distante
+
+Bonne pratique :
+
+- utiliser un identifiant de commit Hugging Face plutot qu'un nom de branche quand l'objectif est la stabilite
+- documenter la revision retenue dans les variables d'environnement du deploiement
+
 ## Risques residuels
 
 ### 1. Certificats autosignes
