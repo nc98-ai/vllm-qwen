@@ -23,7 +23,7 @@ jobs:
     runs-on:
       - self-hosted
       - linux
-      - pc1
+      - PC1
     environment: ${{ inputs.target_env || github.ref_name }}
     steps:
       - name: Resolve deployment names
