@@ -36,10 +36,6 @@ services:
     container_name: vllm_qwen-${ENV_NAME:-dev}
     networks:
       - app-network
-    secrets:
-      - vllm_api_key
-    environment:
-      - VLLM_API_KEY_FILE=/run/secrets/vllm_api_key
 
     # Commande pour démarrer le serveur vLLM
     command:

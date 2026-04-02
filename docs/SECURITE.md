@@ -117,9 +117,9 @@ Bonne pratique :
 
 Les certificats autosignes sont pratiques en environnement de test, mais ils ne constituent pas une solution adequate pour une exposition publique.
 
-Recommandation :
+Environnement de qual et prod :
 
-- utiliser un certificat emis par une autorite de confiance en production
+- Utilisation d'un certificat emis par l' autorite de certificat OPT-NC
 
 ### 2. Secrets presents en memoire et sur disque
 
