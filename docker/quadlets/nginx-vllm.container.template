@@ -5,7 +5,6 @@ Requires=vllm-qwen-${ENV_NAME}.service
 
 [Container]
 Image=${NGINX_IMAGE}
-[Container]
 ContainerName=nginx-vllm-qwen-${ENV_NAME}
 Network=vllm-qwen-${ENV_NAME}.network
 

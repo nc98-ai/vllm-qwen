@@ -300,6 +300,6 @@ jobs:
             echo "--- LOGS VLLM ---"
             journalctl --user -u vllm-qwen-${DEPLOY_ENV_NAME}.service --no-pager || true
             echo "--- LOGS NGINX ---"
-            journalctl --user -u nginx-vllm-${DEPLOY_ENV_NAME}.service --no-pager || true
+            journalctl --user -u nginx-vllm-qwen-${DEPLOY_ENV_NAME}.service --no-pager || true
             exit 1
           fi

@@ -69,7 +69,7 @@ Le workflow self-hosted `quadlet` fait les operations suivantes :
 9. build local de l'image `nginx`
 10. generation des fichiers quadlet depuis les templates dans `docker/quadlets`
 11. `systemctl --user daemon-reload`
-12. redemarrage des services `vllm-qwen.service` et `nginx-vllm.service`
+12. redemarrage des services `vllm-qwen-<ENV_NAME>.service` et `nginx-vllm-qwen-<ENV_NAME>.service`
 13. verification post-deploiement via appel HTTPS local
 
 ## Variables GitHub attendues
@@ -282,7 +282,7 @@ docker inspect --format '{{json .State.Health}}' vllm_qwen-<ENV_NAME>
 docker ps --filter name=nginx-vllm-qwen-<ENV_NAME>
 
 #logs
-journalctl --user -u nginx-vllm-<ENV_NAME>.service -f
+journalctl --user -u nginx-vllm-qwen-<ENV_NAME>.service -f
 ```
 ### consulter les logs de déploiement sur le serveur
 journalctl --user -u vllm-qwen-actions-runner.quadlet.service -f
