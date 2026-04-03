@@ -246,6 +246,7 @@ jobs:
             "vllm-qwen.service"
             "nginx-vllm.service"
             "vllm-qwen.network"
+            "nginx-vllm-${ENV_NAME}.service"
           )
           for unit in "${legacy_units[@]}"; do
             systemctl --user stop "$unit" >/dev/null 2>&1 || true
@@ -254,18 +255,19 @@ jobs:
           rm -f \
             "$QUADLET_DIR/vllm-qwen.network" \
             "$QUADLET_DIR/vllm-qwen.container" \
-            "$QUADLET_DIR/nginx-vllm.container"
+            "$QUADLET_DIR/nginx-vllm.container" \
+            "$QUADLET_DIR/nginx-vllm-${ENV_NAME}.container"
           
           # On ajoute -${ENV_NAME} dans le nom du fichier de DESTINATION
           envsubst < docker/quadlets/vllm-qwen.network.template > "$QUADLET_DIR/vllm-qwen-${ENV_NAME}.network"
           envsubst < docker/quadlets/vllm-qwen.container.template > "$QUADLET_DIR/vllm-qwen-${ENV_NAME}.container"
-          envsubst < docker/quadlets/nginx-vllm.container.template > "$QUADLET_DIR/nginx-vllm-${ENV_NAME}.container"
+          envsubst < docker/quadlets/nginx-vllm.container.template > "$QUADLET_DIR/nginx-vllm-qwen-${ENV_NAME}.container"
           
           systemctl --user daemon-reload
           
           echo "Démarrage des services pour l'environnement : ${ENV_NAME}..."
           # On appelle les services par leurs nouveaux noms uniques
-          systemctl --user restart vllm-qwen-${ENV_NAME}.service nginx-vllm-${ENV_NAME}.service
+          systemctl --user restart vllm-qwen-${ENV_NAME}.service nginx-vllm-qwen-${ENV_NAME}.service
 
       - name: Post-deploy port diagnostics
         env:
