@@ -292,9 +292,6 @@ journalctl --user -u vllm-qwen-actions-runner.quadlet.service -f
 ```bash
 
 port=4444 #qual
-MODEL_NAME=gemma-3-4b-it-quantized.w8a8
-MODEL_NAME=RedHatAI/Qwen2.5-VL-3B-Instruct-quantized.w8a8
-MODEL_NAME=RedHatAI/Mistral-Small-24B-Instruct-2501-quantized.w8a8
 MODEL_NAME=Qwen/Qwen3-4B-AWQ
 curl -k "https://127.0.0.1:$port/v1/completions" \
   -H "Content-Type: application/json" \
