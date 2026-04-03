@@ -17,9 +17,9 @@ Environment=VLLM_API_KEY_FILE=/run/secrets/vllm_api_key
 Volume=${HF_CACHE_DIR}:/root/.cache/huggingface:rw
 Volume=${RUNTIME_DIR}/vllm_api_key.txt:/run/secrets/vllm_api_key:ro
 
-# La commande de lancement
+# La commande de lancement ("enable_thinking" important pour le focntionnement de génération de titre et tags de conversation dans openwebui)
 Exec=${MODEL_NAME} --language-model-only --reasoning-parser qwen3 --default-chat-template-kwargs '{"enable_thinking": false}' --gpu-memory-utilization ${GPU_MEMORY_UTILIZATION} --max-model-len ${MAX_MODEL_LEN} --kv-cache-dtype fp8
-# Exec=${MODEL_NAME} --language-model-only --reasoning-parser qwen3 --gpu-memory-utilization ${GPU_MEMORY_UTILIZATION} --max-model-len ${MAX_MODEL_LEN} --kv-cache-dtype fp8
+
 
 # Configuration du Healthcheck
 HealthCmd=curl -fsS http://127.0.0.1:8000/v1/models >/dev/null
