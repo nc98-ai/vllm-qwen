@@ -29,7 +29,9 @@ HealthTimeout=10s
 HealthStartPeriod=4m
 
 [Service]
+ExecStartPre=/bin/sh -c 'for i in $(seq 1 60); do [ -e /dev/nvidiactl ] && [ -e /usr/lib64/libcuda.so.1 ] && exit 0; sleep 2; done; exit 1'
 Restart=always
+RestartSec=10
 TimeoutStartSec=3600
 
 [Install]
