@@ -1,7 +1,7 @@
 [Unit]
 Description=Proxy Nginx pour vLLM - Environnement ${ENV_NAME}
 After=vllm-qwen-${ENV_NAME}.service
-Requires=vllm-qwen-${ENV_NAME}.service
+Wants=vllm-qwen-${ENV_NAME}.service
 
 [Container]
 Image=${NGINX_IMAGE}
@@ -27,7 +27,9 @@ Volume=${RUNTIME_DIR}/secrets/NGINX_SSL_FULLCHAIN:/run/secrets/NGINX_SSL_FULLCHA
 Volume=${RUNTIME_DIR}/vllm_api_key.txt:/run/secrets/vllm_api_key:ro
 
 [Service]
+ExecStartPre=/bin/sh -c 'for i in $(seq 1 120); do status=$(podman inspect -f "{{.State.Health.Status}}" vllm_qwen-${ENV_NAME} 2>/dev/null || true); [ "$status" = "healthy" ] && exit 0; sleep 2; done; exit 1'
 Restart=always
+RestartSec=10
 
 [Install]
 WantedBy=default.target
