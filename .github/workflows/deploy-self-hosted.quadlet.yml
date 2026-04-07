@@ -18,10 +18,6 @@ on:
         options:
           - ENV_QUL-OPTNC          
           - ENV_PRD-OPTNC
-      network_name:
-        description: Override the Docker network name (optional)
-        required: false
-        default: ""
       force_friday:
         description: "Forcer le déploiement malgré le vendredi (URGENCE UNIQUEMENT)"
         required: false
@@ -58,7 +54,6 @@ jobs:
         shell: bash
         env:
           TARGET_ENV: ${{ inputs.target_env || github.ref_name }}
-          NETWORK_NAME_INPUT: ${{ inputs.network_name }}
           ENV_NAME_VAR: ${{ vars.ENV_NAME }}
           MODEL_NAME_VAR: ${{ vars.MODEL_NAME }}
           MAX_MODEL_LEN_VAR: ${{ vars.MAX_MODEL_LEN }}
@@ -98,15 +93,7 @@ jobs:
 
           echo "DEPLOY_ENV_NAME=${deploy_env_name}" >> "$GITHUB_ENV"
           echo "DEPLOY_STACK_DIR=${REPO_NAME}-${deploy_env_name}" >> "$GITHUB_ENV"
-          if [ -n "${NETWORK_NAME_INPUT:-}" ]; then
-            if printf '%s' "${NETWORK_NAME_INPUT}" | grep -q -- "-${deploy_env_name}$"; then
-              echo "NETWORK_NAME=${NETWORK_NAME_INPUT}" >> "$GITHUB_ENV"
-            else
-              echo "NETWORK_NAME=${NETWORK_NAME_INPUT}-${deploy_env_name}" >> "$GITHUB_ENV"
-            fi
-          else
-            echo "NETWORK_NAME=vllm-qwen-network-${deploy_env_name}" >> "$GITHUB_ENV"
-          fi
+          echo "NETWORK_NAME=vllm-qwen-network-${deploy_env_name}" >> "$GITHUB_ENV"
           echo "MODEL_NAME=${MODEL_NAME_VAR}" >> "$GITHUB_ENV"
           echo "MAX_MODEL_LEN=${MAX_MODEL_LEN_VAR}" >> "$GITHUB_ENV"
           echo "GPU_MEMORY_UTILIZATION=${GPU_MEMORY_UTILIZATION_VAR}" >> "$GITHUB_ENV"
