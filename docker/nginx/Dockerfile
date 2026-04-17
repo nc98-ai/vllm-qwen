@@ -45,11 +45,11 @@ RUN set -eux; \
         > /tmp/openssl-tls12.cnf; \
       OPENSSL_CONF=/tmp/openssl-tls12.cnf apk add --no-cache curl gettext; \
     else \
-      apk add --no-cache curl gettext; \
+      apk add --no-cache curl gettext-runtime; \
     fi 
 
 
-RUN apk add --no-cache curl gettext 
+RUN apk add --no-cache curl gettext
 RUN mkdir -p /etc/nginx/certs /etc/nginx/templates /var/log/nginx \
  && ln -sf /dev/stdout /var/log/nginx/access.log \
  && ln -sf /dev/stderr /var/log/nginx/error.log
