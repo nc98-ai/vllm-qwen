@@ -45,7 +45,7 @@ RUN set -eux; \
         > /tmp/openssl-tls12.cnf; \
       OPENSSL_CONF=/tmp/openssl-tls12.cnf apk add --no-cache curl gettext; \
     else \
-      apk add --no-cache curl gettext-runtime; \
+      apk add --no-cache curl gettext; \
     fi 
 
 
