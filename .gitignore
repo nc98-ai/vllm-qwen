@@ -4,6 +4,10 @@
 *.db
 *opt.sh
 *.key
+*.crt
+*.pem
+*.cer
 secrets/
 docker/vllm_api_key.txt
 actions-runner/*
+
