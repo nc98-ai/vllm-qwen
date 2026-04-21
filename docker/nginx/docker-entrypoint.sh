@@ -52,7 +52,7 @@ if [ -z "${NGINX_API_KEY}" ]; then
   exit 1
 fi
 
-# CI  shellcheck disable=SC2016
+# shellcheck disable=SC2016
 envsubst '${NGINX_BACKEND_UPSTREAM} ${NGINX_HTTPS_LISTEN_PORT} ${NGINX_API_KEY}' \
   < /etc/nginx/templates/nginx.conf.template \
   > /etc/nginx/nginx.conf
