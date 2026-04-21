@@ -1,0 +1,84 @@
+name: CI - Infra Sanity
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - env-qualification
+
+jobs:
+  infra-sanity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install linters
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y shellcheck yamllint
+
+      - name: ShellCheck scripts
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(find . -type f -name "*.sh" \
+            -not -path "./actions-runner/*" \
+            -not -path "./actions-runner/**")
+
+          if [ "${#files[@]}" -gt 0 ]; then
+            shellcheck "${files[@]}"
+          fi
+
+      - name: YAML lint
+        run: |
+          set -euo pipefail
+          yamllint -d '{extends: default, rules: {line-length: disable, truthy: disable, trailing-spaces: disable, document-start: disable, comments-indentation: disable, new-line-at-end-of-file: disable}}' \
+            .github/workflows \
+            docker/docker-compose-vllm-nginx.yml
+
+      - name: Validate docker compose definition
+        env:
+          ENV_NAME: ci
+          MODEL_NAME: Qwen/Qwen3.5-2B
+          MAX_MODEL_LEN: "4096"
+          GPU_MEMORY_UTILIZATION: "0.90"
+          NGINX_HTTPS_HOST_PORT: "443"
+        run: |
+          set -euo pipefail
+          docker compose -f docker/docker-compose-vllm-nginx.yml config -q
+
+      - name: Build nginx image
+        run: |
+          set -euo pipefail
+          docker build -f docker/nginx/Dockerfile -t nginx-vllm-qwen:ci .
+
+      - name: Validate nginx rendered config
+        env:
+          NGINX_BACKEND_UPSTREAM: 127.0.0.1:8000
+          NGINX_HTTPS_LISTEN_PORT: "443"
+          NGINX_API_KEY: dummy-key
+        run: |
+          set -euo pipefail
+
+          tmp_dir="$(mktemp -d)"
+          trap 'rm -rf "${tmp_dir}"' EXIT
+
+          openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+            -keyout "${tmp_dir}/server.key" \
+            -out "${tmp_dir}/server.crt" \
+            -subj "/CN=localhost"
+          cp "${tmp_dir}/server.crt" "${tmp_dir}/server_fullchain.crt"
+          printf '%s' 'dummy-key' > "${tmp_dir}/vllm_api_key"
+
+          docker run --rm \
+            -e NGINX_BACKEND_UPSTREAM \
+            -e NGINX_HTTPS_LISTEN_PORT \
+            -e NGINX_API_KEY \
+            -v "${tmp_dir}/server.crt:/etc/nginx/certs/server.crt:ro" \
+            -v "${tmp_dir}/server.key:/etc/nginx/certs/server.key:ro" \
+            -v "${tmp_dir}/server_fullchain.crt:/etc/nginx/certs/server_fullchain.crt:ro" \
+            --entrypoint sh \
+            nginx-vllm-qwen:ci \
+            -lc 'envsubst '\''${NGINX_BACKEND_UPSTREAM} ${NGINX_HTTPS_LISTEN_PORT} ${NGINX_API_KEY}'\'' < /etc/nginx/templates/nginx.conf.template > /tmp/nginx.conf && nginx -t -c /tmp/nginx.conf'

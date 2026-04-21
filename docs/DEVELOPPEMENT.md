@@ -72,6 +72,62 @@ Le workflow self-hosted `quadlet` fait les operations suivantes :
 12. redemarrage des services `vllm-qwen-<ENV_NAME>.service` et `nginx-vllm-qwen-<ENV_NAME>.service`
 13. verification post-deploiement via appel HTTPS local
 
+## CI de qualification (locale et GitHub)
+
+La CI infra est definie dans `.github/workflows/ci-infra-sanity.yml`.
+Elle peut aussi etre executee localement via `bash scripts/ci-infra-sanity-local.sh`.
+
+### Objectif
+
+Valider les fichiers critiques d'infrastructure sans redeployer le service.
+
+### Ce que la CI verifie concretement
+
+1. Scripts shell valides
+- analyse `shellcheck` sur les scripts `*.sh` (hors dossier `actions-runner`)
+- detection des erreurs de quoting, substitutions risquées, patterns fragiles
+
+2. YAML valide
+- analyse `yamllint` sur `.github/workflows` et `docker/docker-compose-vllm-nginx.yml`
+- verification de la structure YAML et des erreurs de syntaxe
+
+3. Definition compose exploitable
+- execution de `compose config -q` avec variables de test
+- verification que la stack est resolvable sans erreur de configuration
+
+4. Image nginx buildable
+- build de `docker/nginx/Dockerfile`
+- detection des regressions de build
+
+5. Configuration nginx rendue et valide
+- rendu de `docker/nginx/nginx.conf.template` via `envsubst`
+- verification `nginx -t` sur la configuration generee
+- detection des placeholders non resolus et erreurs de syntaxe nginx
+
+6. Impact runtime controle
+- aucun `compose up/down`
+- aucune suppression de conteneurs de service
+- uniquement un conteneur de test ephemere pour le controle `nginx -t`
+
+### Execution locale
+
+Commande standard :
+
+```bash
+bash scripts/ci-infra-sanity-local.sh
+```
+
+Le nettoyage des anciennes images de test CI locale est actif par defaut.
+Pour conserver ces images :
+
+```bash
+bash scripts/ci-infra-sanity-local.sh --no-cleanup-images
+```
+
+Sur Rocky Linux sans `sudo`, le script fonctionne en rootless avec `podman`.
+Si `shellcheck` ou `yamllint` ne sont pas installes localement, le script utilise
+automatiquement des images de lint en conteneur.
+
 ## Variables GitHub attendues
 
 ### Variables d'environnement GitHub

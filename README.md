@@ -4,6 +4,23 @@
 - `docs/DEVELOPPEMENT.md`
 - `docs/SECURITE.md`
 
+## CI locale sans impact service
+
+Pour lancer les controles CI en local:
+
+```bash
+bash scripts/ci-infra-sanity-local.sh
+```
+
+Le script nettoie par defaut les anciennes images de test CI locale.
+Pour conserver ces images:
+
+```bash
+bash scripts/ci-infra-sanity-local.sh --no-cleanup-images
+```
+
+Details complets des verifications CI dans `docs/DEVELOPPEMENT.md`.
+
 ### Variables GitHub attendues
 
 - `ENV_NAME`
