@@ -41,26 +41,25 @@ services:
     environment:
       - VLLM_API_KEY_FILE=/run/secrets/vllm_api_key
 
+
     # Commande pour démarrer le serveur vLLM
     command:
       # - "Qwen/Qwen3-4B-FP8"
-
       # - "Qwen/Qwen2.5-3B-Instruct-AWQ"
-
       # - "Qwen/Qwen3.5-4B"
       # - "--language-model-only"     
+      # - "--quantization"
+      # - "fp8"
       
       - "${MODEL_NAME}"
       - "--language-model-only"       
-      
       - "--gpu-memory-utilization"
       - "${GPU_MEMORY_UTILIZATION}"
       - "--max-model-len"
       - "${MAX_MODEL_LEN}"
       - "--kv-cache-dtype"
       - "fp8"      
-      # - "--quantization"
-      # - "fp8"
+
 
     # Mappage du port pour l'accès à l'API
     expose:
