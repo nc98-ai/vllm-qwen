@@ -4,7 +4,7 @@ services:
     build:
       context: ../
       dockerfile: docker/nginx/Dockerfile
-    image: nginx:latest
+    image: docker.io/library/nginx:1.29.0
     container_name: nginx-vllm-qwen-${ENV_NAME:-dev}
     restart: unless-stopped
     depends_on:
@@ -32,7 +32,7 @@ services:
 
   vllm:
     # Utilisation de l'image pré-construite que vous avez choisie
-    image: vllm/vllm-openai:v0.18.0-cu130
+    image: docker.io/vllm/vllm-openai:v0.18.0-cu130
     container_name: vllm_qwen-${ENV_NAME:-dev}
     networks:
       - app-network
