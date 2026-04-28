@@ -35,11 +35,11 @@ Le deploiement cible est automatise via deux workflows CD totalement fonctionnel
 - `docs/FONCTIONNEL.md`
 - `docs/SECURITE.md`
 
-## Fonctionnement des workflows CD
+## Fonctionnement des workflows CD utilisant les runners GitHub
 
 ### Workflow compose (`deploy-self-hosted.yml`)
 
-Le workflow self-hosted `compose` fait les operations suivantes :
+Le workflow self-hosted utilise docker/podman compose. Il fait les operations suivantes :
 
 1. resolution du nom d'environnement de deploiement
 2. validation de `ENV_NAME`
@@ -231,11 +231,11 @@ En mode rootless, Podman ne peut pas toujours acceder aux controleurs cgroup `cp
 Si le host ne delegue pas ces controleurs au `user.slice`, les options `cpus` et `mem_limit`
 provoquent un echec au demarrage des conteneurs.
 
-Dans ce cas, laisser ces lignes commentees dans `docker/docker-compose-vllm-nginx.yml`.
+Dans ce cas, laisser ces lignes commentees dans le docker/podman compose.
 
 
 
-## Deploiement
+## Deploiement en DEV - utilisation des runners github
 
 ### Certificat autosigne pour le developpement
 
@@ -244,16 +244,18 @@ chmod +x docker/nginx/generate-selfsigned-cert.sh
 cd docker/nginx/
 ./generate-selfsigned-cert.sh
 ```
+renseigner les variables correspondantes dans l'environnement github
 
-### Demarrer le runner
+### Demarrer le runner mannuellement
 
 ```bash
 ./run.sh
 ```
 
-### Lancer un deploiement DEV
+### Lancer un deploiement manuellement
+Aller sur github actions
 
-#### Variante podman compose
+#### Variante podman compose via API
 
 ```bash
 curl -s -o /dev/null -w "dispatch HTTP %{http_code}\n" -X POST \
@@ -263,7 +265,7 @@ curl -s -o /dev/null -w "dispatch HTTP %{http_code}\n" -X POST \
   -d '{"ref":"env-developpement","inputs":{"target_env":"ENV_DEV-OPTNC"}}'
 ```
 
-#### Variante quadlet (Rocky Linux 9)
+#### Variante quadlet (Rocky Linux 9) via API
 
 ```bash
 curl -s -o /dev/null -w "dispatch HTTP %{http_code}\n" -X POST \
@@ -273,7 +275,7 @@ curl -s -o /dev/null -w "dispatch HTTP %{http_code}\n" -X POST \
   -d '{"ref":"env-developpement","inputs":{"target_env":"ENV_DEV-OPTNC"}}'
 ```
 
-### Lancer un deploiement PROD
+### Lancer un deploiement QUAL/PROD - utilisations des runners
 Creer un service de lancement du runner dans ~/.config/systemd/user/github-actions-runner.service
 ```conf
 #~/.config/systemd/user/github-actions-runner.service
@@ -304,7 +306,7 @@ systemctl --user enable --now github-actions-runner.service
 systemctl --user status github-actions-runner.service
 ```
 
-Demarrer les conteneurs
+
 #### Variante podman compose
 
 ```bash
